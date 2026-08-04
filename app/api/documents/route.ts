@@ -44,15 +44,29 @@ function parseDocument(text:string,fileName:string,kind:string){
   const duration=details.match(/(?:Duration|飛行時間)\s*[:：]?\s*(\d{1,2}:\d{2})/i)?.[1]??null;
   return [{title:`${match[3]}${match[4]} ${match[1]} → ${match[2]}`,startAt:`${dates[0]}T${match[5].replace(".",":")}`,endAt:`${dates[1]}T${match[6].replace(".",":")}`,origin:match[1],destination:match[2],duration}];
  });
+ // 第二種航段解析：以「航班號＋出發時間＋出發日＋抵達時間＋抵達日」為錨，
+ // 起訖機場取錨點前文最後兩個合法代碼。涵蓋長榮電子機票這類
+ // 「TPE 航站/Terminal: 2 CDG 航站/Terminal: 1 BR87 23:30 15Jun2026 08:05 16Jun2026」格式。
+ const MONTHS="(?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)";
+ const anchored=segments.length?[]:[...source.matchAll(new RegExp(String.raw`\b([A-Z]{2})\s?(\d{2,4})\s+([0-2]?\d[:.]\d{2})\s+(\d{1,2}${MONTHS}\d{2,4})\s+([0-2]?\d[:.]\d{2})\s+(\d{1,2}${MONTHS}\d{2,4})\b`,"gi"))].flatMap(match=>{
+  const before=source.slice(Math.max(0,(match.index??0)-220),match.index).toUpperCase();
+  const codes=[...before.matchAll(/\b([A-Z]{3})\b/g)].map(x=>x[1]).filter(code=>MANAGED_AIRPORT_CODES.has(code));
+  const origin=codes.at(-2),destination=codes.at(-1);
+  if(!origin||!destination||origin===destination)return [];
+  const startDate=compactDate(match[4]),endDate=compactDate(match[6]);
+  if(!startDate||!endDate)return [];
+  return [{title:`${match[1].toUpperCase()}${match[2]} ${origin} → ${destination}`,startAt:`${startDate}T${match[3].replace(".",":")}`,endAt:`${endDate}T${match[5].replace(".",":")}`,origin,destination,duration:null as string|null}];
+ });
+ const allSegments=[...segments,...anchored];
  const hotel=source.match(/(?:HOTEL|住宿|PROPERTY|飯店)\s*[:：-]?\s*([A-Z0-9][A-Z0-9 '&.,-]{3,55})/i);
- const primarySegment=segments[0];
+ const primarySegment=allSegments[0];
  const title=kind==="flight"?(primarySegment?.title||(flight?`${flight[1]}${flight[2]}${airports.length>=2?` ${airports[0]} → ${airports[1]}`:""}`:"機票・請確認航班名稱")):(hotel?.[1]?.trim()||fileName.replace(/\.[^.]+$/,""));
  const confidence={title:Boolean(primarySegment||flight||hotel),date:Boolean(primarySegment||times.length>=1),times:Boolean(primarySegment||times.length>=2),route:Boolean(primarySegment||airports.length>=2),amount:Boolean(money),textDetected:text.trim().length>20};
  const isTravel=kind==="flight"||kind==="stay"||kind==="機票"||kind==="住宿";
  const checks=isTravel?[confidence.title,confidence.times,confidence.amount,kind==="flight"||kind==="機票"?confidence.route:true]:[confidence.textDetected,confidence.date,confidence.amount,Boolean(money?.[1])];
  const score=Math.round(checks.filter(Boolean).length/checks.length*100);
  const warnings=[!confidence.textDetected?"圖片文字尚未成功讀取":null,!confidence.date?"找不到消費日期":null,!confidence.amount?"找不到金額":null,!money?.[1]?"找不到幣別":null,isTravel&&!confidence.title?"名稱辨識信心較低":null,(kind==="flight"||kind==="機票")&&!confidence.route?"找不到完整起訖地":null].filter(Boolean) as string[];
- return {title,startAt:primarySegment?.startAt??times[0]??null,endAt:primarySegment?.endAt??times[1]??null,origin:primarySegment?.origin??airports[0]??null,destination:primarySegment?.destination??airports[1]??null,segments,currency:money?.[1]?.toUpperCase()==="NTD"?"TWD":money?.[1]?.toUpperCase()??null,amount:money?money[2].replaceAll(",",""):null,confidence,textDetected:confidence.textDetected,score,warnings,sourceExcerpt:text.trim().replace(/\s+/g," ").slice(0,280)};
+ return {title,startAt:primarySegment?.startAt??times[0]??null,endAt:primarySegment?.endAt??times[1]??null,origin:primarySegment?.origin??airports[0]??null,destination:primarySegment?.destination??airports[1]??null,segments:allSegments,currency:money?.[1]?.toUpperCase()==="NTD"?"TWD":money?.[1]?.toUpperCase()??null,amount:money?money[2].replaceAll(",",""):null,confidence,textDetected:confidence.textDetected,score,warnings,sourceExcerpt:text.trim().replace(/\s+/g," ").slice(0,280)};
 }
 
 export async function GET(request:NextRequest){

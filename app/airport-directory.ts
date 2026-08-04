@@ -12,7 +12,7 @@ const aliasRows=MANAGED_AIRPORTS.flatMap(airport=>{
  const keywordAliases=airport.keywords.split(",").map(value=>value.trim()).filter(value=>value.length>=6&&!/^[A-Z]{3}$/i.test(value));
  const coreName=clean(airport.name);
  return [...airport.aliases,airport.name,coreName,...keywordAliases]
-  .map(value=>clean(value))
+  .map(value=>clean(value).toUpperCase())
   .filter(value=>value.length>=6)
   .map(alias=>({alias,code:airport.code}));
 }).sort((a,b)=>b.alias.length-a.alias.length);
@@ -20,7 +20,9 @@ const aliasRows=MANAGED_AIRPORTS.flatMap(airport=>{
 export function normalizeManagedAirportText(value:string){
  let normalized=value.replace(ignoredWords," ").replace(/\s+/g," ");
  for(const {alias,code} of aliasRows){
-  if(normalized.toUpperCase().includes(alias.toUpperCase()))normalized=normalized.replace(new RegExp(escaped(alias),"gi"),` ${code} `);
+  // 只比對全大寫片段：票面英文慣以全大寫呈現機場名，
+  // 而一般句子（如 "via EVA mobile app"）不會，避免 MOBILE→MOB 這類誤判。
+  if(normalized.includes(alias))normalized=normalized.replace(new RegExp(escaped(alias),"g"),` ${code} `);
  }
  return normalized.replace(/\s+/g," ");
 }
