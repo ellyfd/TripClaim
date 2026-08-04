@@ -6,6 +6,8 @@
 
 以 [Next.js 16](https://nextjs.org) + [vinext](https://github.com/cloudflare/vinext) 打造、跑在 [Cloudflare Workers](https://workers.cloudflare.com) 邊緣網路上的 PWA。
 
+**🌐 線上網站：<https://quick-trip-claim.ellyfd.chatgpt.site/>**（需以 ChatGPT 帳號登入）
+
 ---
 
 ## 目錄
@@ -282,6 +284,7 @@ npm test    # 建置 + 產物驗證 + node --test
 
 **專案**
 
+- [線上網站](https://quick-trip-claim.ellyfd.chatgpt.site/) — 快報 TripClaim live demo（需 ChatGPT 登入）
 - [GitHub Repo](https://github.com/ellyfd/TripClaim)
 - [變更歷史（已合併 PR）](https://github.com/ellyfd/TripClaim/pulls?q=is%3Apr+is%3Amerged)
 
