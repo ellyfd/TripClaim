@@ -1,108 +1,105 @@
-# vinext-starter
+# 快報 TripClaim
 
-A clean full-stack starter running on
-[vinext](https://github.com/cloudflare/vinext), with optional Cloudflare D1 and
-Drizzle support.
+> **出差報帳，不該比出差本身還累。**
 
-## Prerequisites
+「快報 TripClaim」把一趟出差最麻煩的兩件事——**多人行程對齊**與**回國後報帳**——變成一件在路上就順手完成的小事。行程一起排、單據隨手拍，回國後只確認例外，報帳直接收尾。
 
-- Node.js `>=22.13.0`
-- Linux with `flock`, `curl`, and GNU `timeout`
+---
 
-## Sites Lifecycle
+## 😩 你一定經歷過
 
-The Sites lifecycle CLI runs the locked dependency install before returning this checkout. Edit the source under `app/`, then checkpoint when a coherent milestone is ready to inspect or share. The remote Sites builder runs `npm run build` against the pushed commit. Do not repeat install or build as a normal pre-checkpoint step.
+- 出差回來，皮夾裡塞滿收據，Line 裡散落一堆訂房信與電子票券
+- 花整個下午分類、換算幣別、重新命名檔案，還是被財務退件「缺信用卡帳單」
+- 四個人同行，行程改了三版，永遠有人拿到舊版
+- 機票、住宿明明上傳過一次，報帳時又要重打一遍
 
-This starter does not use `wrangler.jsonc`.
+**快報 TripClaim 的答案：少輸入、預設自動、只讓人處理例外。**
 
-`install:ci` is intentionally a single, non-retrying `npm ci`. It refuses a concurrent install for the same project, consumes a matching image-seeded npm cache with `--prefer-offline` while retaining registry fallback for a missing cache object, otherwise downloads and verifies the complete vinext tarball recorded in `package-lock.json`, limits npm to one socket, and terminates a stalled install. `build` applies a short timeout and then validates the Sites artifact. These helpers target Linux and use GNU `timeout`; they are not native macOS scripts.
+---
 
-Scripts that need writable project-scoped home, npm, XDG, and temporary paths use `scripts/sites-env.sh`. The `dev` and `start` scripts honor the caller's runtime environment and keep Wrangler logs inside the checkout. The generated `.sites-runtime/` directory is disposable and ignored by Git.
+## ✨ 三步驟，一氣呵成
 
-## Included Shape
+### 1️⃣ 我的出差 — 開一趟行程，邀請大家加入
+建立出差名稱、日期與國家城市，一鍵邀請同行者。每個人有自己的登入與權限（可編輯／僅查看），行程可共用，**機票、單據與報帳仍各自私有**。
 
-- edit site code under `app/`
-- `app/chatgpt-auth.ts` provides optional dispatch-owned ChatGPT sign-in helpers
-- `.openai/hosting.json` declares optional Sites D1 and R2 bindings
-- `vite.config.ts` simulates declared bindings for local development
-- `db/index.ts` reads the D1 binding from the Cloudflare Worker environment
-- `db/schema.ts` starts intentionally empty
-- `examples/d1/` contains an optional D1 example surface
-- `drizzle.config.ts` supports local migration generation when needed
+### 2️⃣ 共同行程 — 所有人看到的都是同一份最新版
+- 每日行程把**會議、三餐、地址、住宿與參考資料**集中在一起
+- 誰改了什麼、什麼時候改的，全部留下記錄
+- 上傳機票或訂房確認，**AI 自動辨識**航班、日期、金額——一次上傳，同步行程與待報支
+- 行程確認後，**出差申請單自動產生**，日期、城市、交通、住宿、同行者直接帶入，不必重填
 
-## Workspace Auth Headers
+### 3️⃣ 我的報帳 — 旅行模式，拿到單據就丟進來
+- 拍照或上傳圖片、PDF、電子票券，**不用分類、不用填金額**
+- AI 依出差日期與城市自動整理、換算台幣、建議標準檔名
+- **例外優先確認匣**：系統處理掉確定的，只問你不確定的那幾筆
+- **缺件中心**主動告訴你還缺什麼——依卡號末四碼、日期、店家、外幣金額自動配對信用卡帳單
 
-OpenAI workspace sites can read the current user's email from
-`oai-authenticated-user-email`.
+> 「先處理 3 個例外，其他 15 筆不用看。」——這就是我們想給你的報帳體驗。
 
-SIWC-authenticated workspace sites may also receive
-`oai-authenticated-user-full-name` when the user's SIWC profile has a non-empty
-`name` claim. The full-name value is percent-encoded UTF-8 and is accompanied by
-`oai-authenticated-user-full-name-encoding: percent-encoded-utf-8`.
+---
 
-Treat the full name as optional and fall back to email when it is absent:
+## 🔒 共用行程，私有帳務
 
-```tsx
-import { headers } from "next/headers";
+協作不代表裸奔。快報 TripClaim 的權限設計原則：
 
-export default async function Home() {
-  const requestHeaders = await headers();
-  const email = requestHeaders.get("oai-authenticated-user-email");
-  const encodedFullName = requestHeaders.get("oai-authenticated-user-full-name");
-  const fullName =
-    encodedFullName &&
-    requestHeaders.get("oai-authenticated-user-full-name-encoding") ===
-      "percent-encoded-utf-8"
-      ? decodeURIComponent(encodedFullName)
-      : null;
+| 資料 | 誰看得到 |
+|------|----------|
+| 行程時間、地點、住宿摘要 | 所有同行者 |
+| 機票票價、付款方式 | 只有本人 |
+| 收據、卡片、報支金額 | 本人與授權財務 |
 
-  const displayName = fullName ?? email;
-  // ...
-}
+每位同行者只維護自己的航班與住宿，分享頁只顯示必要摘要。
+
+---
+
+## 📱 為出差而生
+
+- **PWA 支援**：加入主畫面，像原生 App 一樣使用，含離線頁面
+- **手機優先**：底部快捷列直達行程、報帳、上傳、待辦
+- **今日看板**：當地時間、下一站、導航連結、三餐與今晚住宿一目瞭然
+- **全球城市庫**：內建 25+ 國家、80+ 城市，國家→城市自動帶入
+
+---
+
+## 🛠 技術棧
+
+以現代全端架構打造，跑在 Cloudflare 邊緣網路上：
+
+- **前端**：Next.js 16 · React 19 · Tailwind CSS 4
+- **執行環境**：[vinext](https://github.com/cloudflare/vinext)（Vite + Cloudflare Workers）
+- **資料庫**：Cloudflare D1 + Drizzle ORM
+- **文件辨識**：tesseract.js（OCR）+ unpdf（PDF 解析）
+- **身分驗證**：Sign in with ChatGPT（選用，見 `app/chatgpt-auth.ts`）
+
+## 🚀 快速開始
+
+```bash
+# 需求：Node.js >= 22.13.0，Linux（flock、curl、GNU timeout）
+
+npm run install:ci   # 鎖定版本的一次性安裝
+npm run dev          # 啟動開發伺服器
+npm run build        # 建置並驗證可部署的 Sites 產物
+npm test             # 建置 + 驗證 + 測試
+npm run db:generate  # schema 變更後產生 Drizzle 遷移
 ```
 
-## Optional Dispatch-Owned ChatGPT Sign-In
+主要程式碼都在 `app/` 之下；D1 綁定宣告於 `.openai/hosting.json`，本地開發由 `vite.config.ts` 模擬。
 
-Import the ready-to-use helpers from `app/chatgpt-auth.ts` when the site needs
-optional or required ChatGPT sign-in:
+---
 
-- Use `getChatGPTUser()` for optional signed-in UI.
-- Use `requireChatGPTUser(returnTo)` for server-rendered pages that should send
-  anonymous visitors through Sign in with ChatGPT.
-- Use `chatGPTSignInPath(returnTo)` and `chatGPTSignOutPath(returnTo)` for
-  browser links or actions.
-- Pass a same-origin relative `returnTo` path for the destination after sign-in
-  or sign-out. The helper validates and safely encodes it.
-- Mark protected pages with `export const dynamic = "force-dynamic"` because
-  they depend on per-request identity headers.
+## 🗺 產品路線圖
 
-Dispatch owns `/signin-with-chatgpt`, `/signout-with-chatgpt`, `/callback`, the
-OAuth cookies, and identity header injection. Do not implement app routes for
-those reserved paths. Routes that do not import and call the helper remain
-anonymous-compatible.
+| 優先 | 項目 | 狀態 |
+|------|------|------|
+| P0 | 旅行模式：一鍵拍照／上傳 | ✅ 已完成 |
+| P0 | 例外優先確認匣 | ✅ 已完成 |
+| P0 | 多人登入與行程分享 | ✅ 原型完成 |
+| P0 | 信用卡帳單自動配對 | 🔜 下一階段 |
+| P1 | Email／訊息收據入口 | 🔜 下一階段 |
+| P1 | 住宿明細自動拆項 | 🔜 下一階段 |
+| P1 | 公司規則即時檢核 | 📋 規則盤點中 |
+| P2 | 公司報帳系統串接 | ⏳ 待 API |
 
-SIWC establishes identity only; it does not prove workspace membership. Use the
-Sites hosting platform's access policy controls for workspace-wide restrictions,
-or enforce explicit server-side membership or allowlist checks.
+---
 
-Use SIWC for account pages, user-specific dashboards, saved records, and write
-actions tied to the current ChatGPT user. Leave public content anonymous.
-
-## Diagnostic Commands
-
-- `npm run install:ci`: perform the one bounded lockfile install
-- `npm run dev`: start the Vite/Vinext development server
-- `npm run build`: build and validate the deployable Sites artifact
-- `npm run start`: start the built Vinext application
-- `npm test`: build, validate, and verify the rendered development-preview metadata
-- `npm run validate:artifact`: recheck an existing artifact's manifest and ESM `default.fetch` export
-- `npm run db:generate`: generate Drizzle migrations after schema changes
-
-Use build and validation commands for targeted diagnosis after a remote failure, not as part of the normal checkpoint path.
-
-The timeout defaults can be overridden for a controlled canary with `SITES_INSTALL_TIMEOUT`, `SITES_INSTALL_KILL_AFTER`, `SITES_BUILD_TIMEOUT`, and `SITES_BUILD_KILL_AFTER`. A timeout fails the command; the helpers never retry an unchanged install or build.
-
-## Learn More
-
-- [vinext Documentation](https://github.com/cloudflare/vinext)
-- [Drizzle D1 Guide](https://orm.drizzle.team/docs/get-started/d1-new)
+**快報 TripClaim** — 把單據丟進來，剩下的交給我們。出差的每一分鐘，都該花在正事上。
