@@ -55,7 +55,8 @@ function parseDocument(text:string,fileName:string,kind:string){
   if(!origin||!destination||origin===destination)return [];
   const startDate=compactDate(match[4]),endDate=compactDate(match[6]);
   if(!startDate||!endDate)return [];
-  return [{title:`${match[1].toUpperCase()}${match[2]} ${origin} → ${destination}`,startAt:`${startDate}T${match[3].replace(".",":")}`,endAt:`${endDate}T${match[5].replace(".",":")}`,origin,destination,duration:null as string|null}];
+  const duration=source.slice((match.index??0)+match[0].length,(match.index??0)+match[0].length+320).match(/(?:Duration|飛行時間)\s*[\/:：]?\s*(\d{1,2}:\d{2})/i)?.[1]??null;
+  return [{title:`${match[1].toUpperCase()}${match[2]} ${origin} → ${destination}`,startAt:`${startDate}T${match[3].replace(".",":")}`,endAt:`${endDate}T${match[5].replace(".",":")}`,origin,destination,duration}];
  });
  const allSegments=[...segments,...anchored];
  const hotel=source.match(/(?:HOTEL|住宿|PROPERTY|飯店)\s*[:：-]?\s*([A-Z0-9][A-Z0-9 '&.,-]{3,55})/i);
