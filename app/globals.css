@@ -308,3 +308,8 @@ body{font-size:15px;line-height:1.5}
 .expense-workbench-main .expense-real-list em{grid-column:2}
 .expense-workbench-main .expense-real-list .expense-actions{grid-column:1/3}
 }
+.quick-booking-body{overflow-x:hidden}
+.flight-segments input,.ticket-amount input,.quick-booking-fields input{height:44px;min-width:0;width:100%;box-sizing:border-box}
+.flight-route-block{grid-template-columns:minmax(64px,90px) minmax(0,1.35fr) 24px minmax(64px,90px) minmax(0,1.35fr)}
+.flight-route-block input[type=datetime-local]{font-size:13px;padding:0 6px}
+@media(max-width:680px){.flight-segments input,.ticket-amount input,.quick-booking-fields input{height:48px}}
