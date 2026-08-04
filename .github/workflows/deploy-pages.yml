@@ -3,8 +3,10 @@
 # 觸發時機：
 #   - 手動 push 到 main（site/ 或截圖有變動時）
 #   - 手動觸發（workflow_dispatch）
-#   - auto-test-merge.yml 合併後的部署走它自己的 deploy job
-#     （GITHUB_TOKEN 的合併不會觸發這裡的 push 事件）
+#   - Auto test & merge 完成後（workflow_run）：GITHUB_TOKEN 的合併
+#     不會觸發 push 事件，但 workflow_run 會照常觸發，
+#     且以 main 的身分執行，滿足 github-pages environment 的
+#     「僅限 main」保護規則。
 #
 # 首次使用前，需在 Settings → Pages → Source 選「GitHub Actions」。
 
@@ -18,6 +20,9 @@ on:
       - "docs/screenshots/**"
       - ".github/workflows/deploy-pages.yml"
   workflow_dispatch:
+  workflow_run:
+    workflows: ["Auto test & merge"]
+    types: [completed]
 
 permissions:
   contents: read
@@ -30,6 +35,8 @@ concurrency:
 
 jobs:
   deploy:
+    # workflow_run 觸發時，只在 Auto test & merge 成功（＝已合併）後部署
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
