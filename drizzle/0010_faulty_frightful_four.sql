@@ -1,0 +1,1 @@
+ALTER TABLE `uploaded_documents` ADD `content_hash` text;

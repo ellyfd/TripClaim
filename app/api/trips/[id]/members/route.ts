@@ -1,0 +1,9 @@
+import {NextRequest,NextResponse} from "next/server";
+import {eq} from "drizzle-orm";
+import {getChatGPTUser} from "../../../../chatgpt-auth";
+import {getDb} from "../../../../../db";
+import {getMembership,recordAudit,requireTripMember} from "../../../../../db/access";
+import {tripMembers} from "../../../../../db/schema";
+
+export async function GET(_:NextRequest,{params}:{params:Promise<{id:string}>}){const user=await getChatGPTUser(),{id}=await params;if(!user)return NextResponse.json({error:"authentication_required"},{status:401});if(!await requireTripMember(id,user.email))return NextResponse.json({error:"forbidden"},{status:403});const db=await getDb();return NextResponse.json({members:await db.select().from(tripMembers).where(eq(tripMembers.tripId,id))})}
+export async function POST(request:NextRequest,{params}:{params:Promise<{id:string}>}){const user=await getChatGPTUser(),{id}=await params;if(!user)return NextResponse.json({error:"authentication_required"},{status:401});const actor=await getMembership(id,user.email);if(!actor||!(actor.role==="creator"||actor.role==="member"))return NextResponse.json({error:"forbidden"},{status:403});const input=await request.json() as {email?:string;role?:"member"|"viewer"|"finance"};const email=input.email?.trim().toLowerCase();if(!email)return NextResponse.json({error:"email_required"},{status:400});const db=await getDb();const existing=await getMembership(id,email);if(existing)return NextResponse.json({id:existing.id,alreadyMember:true});const memberId=crypto.randomUUID();await db.insert(tripMembers).values({id:memberId,tripId:id,userEmail:email,role:input.role??"member",joinedAt:new Date().toISOString()});await recordAudit({tripId:id,actorEmail:user.email,entityType:"trip_member",entityId:memberId,action:"invite",after:{email,role:input.role??"member"}});return NextResponse.json({id:memberId,saved:true},{status:201})}
