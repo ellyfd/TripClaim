@@ -313,3 +313,8 @@ body{font-size:15px;line-height:1.5}
 .flight-route-block{grid-template-columns:minmax(64px,90px) minmax(0,1.35fr) 24px minmax(64px,90px) minmax(0,1.35fr)}
 .flight-route-block input[type=datetime-local]{font-size:13px;padding:0 6px}
 @media(max-width:680px){.flight-segments input,.ticket-amount input,.quick-booking-fields input{height:48px}}
+.side-booking-actions{grid-template-columns:1fr}
+.kind-toggle{display:flex;gap:4px;margin-top:12px;padding:3px;border:1px solid #c8d4cf;border-radius:9px;background:#f2f6f4;width:max-content}
+.kind-toggle button{min-height:34px;padding:0 20px;border:0;border-radius:7px;background:transparent;color:var(--muted);font-size:13px;font-weight:800;cursor:pointer}
+.kind-toggle button.on{background:var(--green);color:#fff}
+@media(max-width:680px){.kind-toggle{width:100%}.kind-toggle button{flex:1;min-height:44px;font-size:15px}}
