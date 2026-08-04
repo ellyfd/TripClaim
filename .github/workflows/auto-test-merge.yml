@@ -76,3 +76,33 @@ jobs:
           gh pr merge "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" \
             --squash --delete-branch \
             --match-head-commit "$TESTED_SHA"
+
+  # GITHUB_TOKEN 的合併不會觸發 deploy-pages.yml 的 push 事件，
+  # 所以自動合併後由這個 job 直接部署 GitHub Pages。
+  deploy-pages:
+    needs: test-and-merge
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Assemble static site
+        run: |
+          mkdir -p _site/screenshots
+          cp -r site/. _site/
+          cp docs/screenshots/*.png _site/screenshots/
+      - uses: actions/configure-pages@v5
+        with:
+          enablement: true
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - id: deployment
+        uses: actions/deploy-pages@v4
