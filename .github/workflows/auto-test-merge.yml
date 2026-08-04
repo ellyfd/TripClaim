@@ -1,0 +1,78 @@
+# 自動測試＋合併：
+#   建立 PR → npm test → 確認仍是同一版本 → Squash merge → 刪除分支
+#
+# 安全條件（缺一不合併）：
+#   - 只處理 ellyfd 建立的 PR
+#   - 只處理本 repo 的分支（fork 的 PR 一律不碰）
+#   - Draft PR 不合併
+#   - 測試失敗不合併
+#   - 有衝突不合併
+#   - 測試後又被推新 commit 的 PR 不合併舊版本（--match-head-commit）
+#   - 掛 no-auto-merge 標籤的 PR 不合併（逃生口）
+#   - 只用 GitHub 內建 GITHUB_TOKEN，不用外部 App
+#
+# 注意：GITHUB_TOKEN 完成的合併不會觸發其他 workflow；
+#       Sites 網站發布仍需在 ChatGPT Sites 環境手動 checkpoint。
+
+name: Auto test & merge
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, ready_for_review]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: auto-merge-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  test-and-merge:
+    name: npm test → squash merge
+    runs-on: ubuntu-latest
+    if: >-
+      !github.event.pull_request.draft &&
+      github.event.pull_request.user.login == 'ellyfd' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      !contains(github.event.pull_request.labels.*.name, 'no-auto-merge')
+    steps:
+      - name: Checkout tested commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install (locked, bounded)
+        run: npm run install:ci
+
+      - name: Test (build + artifact validation + node --test)
+        run: npm test
+
+      - name: Squash merge if head unchanged
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          TESTED_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          # mergeable 需要 GitHub 背景計算，UNKNOWN 時稍候重查
+          for attempt in 1 2 3 4 5; do
+            state=$(gh pr view "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --json mergeable -q .mergeable)
+            [ "$state" != "UNKNOWN" ] && break
+            sleep 5
+          done
+          echo "mergeable=$state"
+          if [ "$state" = "CONFLICTING" ]; then
+            echo "::error::PR 與 main 有衝突，不自動合併。"
+            exit 1
+          fi
+          # --match-head-commit：測試後若有人再推 commit，GitHub 會拒絕這次合併
+          gh pr merge "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" \
+            --squash --delete-branch \
+            --match-head-commit "$TESTED_SHA"
