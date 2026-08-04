@@ -282,3 +282,7 @@ body{font-size:15px;line-height:1.5}
 .expense-empty-cta p{margin:0;color:var(--muted);font-size:14px;max-width:430px;line-height:1.55}
 .expense-empty-cta button{min-height:52px;padding:0 26px;border:0;border-radius:9px;background:var(--green);color:#fff;font-size:16px;font-weight:800;cursor:pointer}
 @media(max-width:680px){.expense-empty-cta{padding:26px 16px}.expense-empty-cta p{font-size:15px}.expense-empty-cta button{width:100%}}
+.agenda-sheet-scrollwrap{position:relative}
+.sheet-scroll-more{position:absolute;top:10px;right:10px;z-index:9;pointer-events:none;background:rgba(20,62,48,.88);color:#fff;font-size:12px;font-weight:800;padding:6px 12px;border-radius:999px;box-shadow:0 4px 12px rgba(18,49,38,.25)}
+@media(max-width:800px){.sheet-scroll-more{display:none}}
+.document-head-actions button:disabled,.expense-export-actions button:disabled{opacity:.42;cursor:not-allowed}
