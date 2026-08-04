@@ -50,6 +50,7 @@ export default function CreateTripWizardLive({onCreate,onExpense}:{onCreate:(tri
  const countries=useMemo(()=>Object.keys(destinations).sort((a,b)=>(a.match(/[A-Z]{3}$/)?.[0]??a).localeCompare(b.match(/[A-Z]{3}$/)?.[0]??b,"en")),[]);
  const [step,setStep]=useState(1),[form,setForm]=useState(initial),[nameEdited,setNameEdited]=useState(false),[email,setEmail]=useState(""),[mode,setMode]=useState<"list"|"create"|"edit">("list"),[editingId,setEditingId]=useState("");
  const [state,setState]=useState<"loading"|"ready"|"saving"|"error">("loading"),[trips,setTrips]=useState<Trip[]>([]);
+ const [errorMsg,setErrorMsg]=useState("");
  const [pendingDelete,setPendingDelete]=useState<Trip|null>(null),[deleting,setDeleting]=useState(false);
 
  useEffect(()=>{Promise.all([fetch("/api/drafts?flow=create").then(r=>r.ok?r.json():null),fetch("/api/trips").then(r=>r.ok?r.json():null)]).then(([drafts,tripData])=>{if(drafts?.draft){const saved={...initial,...drafts.draft.payload};setStep(Math.min(drafts.draft.step,3));setForm(saved);setNameEdited(Boolean(saved.name))}setTrips(tripData?.trips??[]);setState("ready")}).catch(()=>setState("ready"))},[]);
@@ -68,11 +69,13 @@ export default function CreateTripWizardLive({onCreate,onExpense}:{onCreate:(tri
  const deleteTrip=async()=>{if(!pendingDelete)return;setDeleting(true);const r=await fetch(`/api/trips/${pendingDelete.id}`,{method:"DELETE"});if(r.ok){setTrips(v=>v.filter(x=>x.id!==pendingDelete.id));setPendingDelete(null)}else window.alert("只有建立者可以刪除這趟出差。");setDeleting(false)};
  const firstStepReady=Boolean(effectiveName&&form.startsOn&&form.endsOn&&form.endsOn>=form.startsOn&&!form.stops.some(s=>!s.country||!s.city));
  const finish=async()=>{
-  if(!firstStepReady){setState("error");setStep(1);return}
+  if(!firstStepReady){setState("error");setErrorMsg("請先完成地點與日期的選擇。");setStep(1);return}
   setState("saving");
   const payload={name:effectiveName,purpose:effectiveName,startsOn:form.startsOn,endsOn:form.endsOn,destinations:form.stops.map(s=>{const [countryName,countryCode]=s.country.split(/ (?=[A-Z]{3}$)/);return{countryCode,countryName,cityName:s.city}})};
-  const response=await fetch(mode==="edit"?`/api/trips/${editingId}`:"/api/trips",{method:mode==="edit"?"PATCH":"POST",headers:{"content-type":"application/json"},body:JSON.stringify(payload)});
-  if(!response.ok){setState("error");return}
+  let response;
+  try{response=await fetch(mode==="edit"?`/api/trips/${editingId}`:"/api/trips",{method:mode==="edit"?"PATCH":"POST",headers:{"content-type":"application/json"},body:JSON.stringify(payload)})}
+  catch{setState("error");setErrorMsg("網路連線異常，資料仍保留，請確認網路後重試。");return}
+  if(!response.ok){setState("error");setErrorMsg(response.status===401?"登入狀態已失效，請重新整理頁面後再試。":response.status>=500?"系統暫時無法保存（不是資料填寫問題），請稍後再試；若持續發生請聯絡管理員。":"保存失敗，請檢查欄位內容後重試。");return}
   const result=await response.json(),id=mode==="edit"?editingId:result.id;
   if(mode!=="edit")for(const memberEmail of form.emails)await fetch(`/api/trips/${id}/members`,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({email:memberEmail,role:"member"})});
   rememberTrip(id);setState("ready");onCreate({id,name:effectiveName});
@@ -95,7 +98,7 @@ export default function CreateTripWizardLive({onCreate,onExpense}:{onCreate:(tri
      <label className="auto-name-field">3. 出差名稱 <small>已依地點與日期自動產生，可自行修改</small><input value={effectiveName} placeholder="選好地點與日期後自動產生" onChange={e=>{setNameEdited(true);setForm(v=>({...v,name:e.target.value}))}}/></label>
     </>}
     {step===2&&<><div><span>步驟 2 / 3</span><h2>{mode==="edit"?"確認同行設定":"邀請同行者"}</h2><p>所有成員都能編輯共同行程；個人報支仍彼此隔離。</p></div>{mode==="edit"?<p className="edit-member-note">既有同行者不會因修改基本資料而被移除；要新增同行者可進入行程後操作。</p>:<><div className="invite-row"><input value={email} onChange={e=>setEmail(e.target.value)} placeholder="同行者 Email" type="email"/><button onClick={addEmail}>加入</button></div><div className="invite-list">{form.emails.length?form.emails.map(x=><p key={x}><span>{x}</span><button onClick={()=>setForm(v=>({...v,emails:v.emails.filter(y=>y!==x)}))}>移除</button></p>):<small>可先略過，之後仍可邀請。</small>}</div></>}</>}
-    {step===3&&<><div><span>步驟 3 / 3</span><h2>{mode==="edit"?"確認修改":"確認並建立"}</h2><p>{mode==="edit"?"儲存後回到這趟共同行程。":"建立後進入共同行程；班機與住宿可由每人各自上傳。"}</p></div><div className="wizard-summary"><b>{effectiveName}</b><span>{form.startsOn} → {form.endsOn}</span><span>{form.stops.map(x=>x.city).join(" → ")}</span>{mode!=="edit"&&<span>{form.emails.length} 位受邀同行者</span>}</div>{state==="error"&&<p className="form-error">保存失敗，資料仍保留，請重新嘗試。</p>}</>}
+    {step===3&&<><div><span>步驟 3 / 3</span><h2>{mode==="edit"?"確認修改":"確認並建立"}</h2><p>{mode==="edit"?"儲存後回到這趟共同行程。":"建立後進入共同行程；班機與住宿可由每人各自上傳。"}</p></div><div className="wizard-summary"><b>{effectiveName}</b><span>{form.startsOn} → {form.endsOn}</span><span>{form.stops.map(x=>x.city).join(" → ")}</span>{mode!=="edit"&&<span>{form.emails.length} 位受邀同行者</span>}</div>{state==="error"&&<p className="form-error">{errorMsg||"保存失敗，資料仍保留，請重新嘗試。"}</p>}</>}
     <div className="wizard-footer"><button onClick={()=>setStep(v=>Math.max(1,v-1))} disabled={step===1||state==="saving"}>← 上一頁</button>{step<3?<button className="next-page" disabled={(step===1&&!firstStepReady)||state==="saving"} onClick={()=>setStep(v=>v+1)}>下一頁 →</button>:<button className="next-page" disabled={state==="saving"} onClick={finish}>{state==="saving"?"正在保存…":mode==="edit"?"儲存修改並進入行程 →":"建立並前往安排行程 →"}</button>}</div>
    </>}</div>
   </section>
