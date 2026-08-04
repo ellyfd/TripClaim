@@ -277,3 +277,8 @@ body{font-size:15px;line-height:1.5}
  .flight-route-block{grid-template-columns:1fr 1fr}
  .flight-route-block>i{display:none}
 }
+.expense-workbench-page,.missing-live{scroll-margin-top:118px}
+.expense-empty-cta{display:grid;justify-items:center;gap:12px;padding:34px 20px;margin-top:14px;border:1px dashed #b8ccc2;border-radius:10px;background:#f7faf8;text-align:center}
+.expense-empty-cta p{margin:0;color:var(--muted);font-size:14px;max-width:430px;line-height:1.55}
+.expense-empty-cta button{min-height:52px;padding:0 26px;border:0;border-radius:9px;background:var(--green);color:#fff;font-size:16px;font-weight:800;cursor:pointer}
+@media(max-width:680px){.expense-empty-cta{padding:26px 16px}.expense-empty-cta p{font-size:15px}.expense-empty-cta button{width:100%}}

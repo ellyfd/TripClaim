@@ -76,11 +76,12 @@
 ```bash
 # 需求：Node.js >= 22.13.0，Linux（flock、curl、GNU timeout）
 
-npm run install:ci   # 鎖定版本的一次性安裝
-npm run dev          # 啟動開發伺服器
-npm run build        # 建置並驗證可部署的 Sites 產物
-npm test             # 建置 + 驗證 + 測試
-npm run db:generate  # schema 變更後產生 Drizzle 遷移
+npm run install:ci        # 鎖定版本的一次性安裝
+npm run dev               # 啟動開發伺服器
+npm run db:migrate:local  # 首次啟動 dev 後執行：套用本機 D1 遷移（否則 API 會回 500）
+npm run build             # 建置並驗證可部署的 Sites 產物
+npm test                  # 建置 + 驗證 + 測試
+npm run db:generate       # schema 變更後產生 Drizzle 遷移
 ```
 
 主要程式碼都在 `app/` 之下；D1 綁定宣告於 `.openai/hosting.json`，本地開發由 `vite.config.ts` 模擬。
