@@ -38,6 +38,26 @@
 
 ---
 
+## 📸 實際畫面
+
+**共同行程表**——會議、三餐、住宿排進同一張表，待辦與補休試算就在旁邊：
+
+![共同行程表](docs/screenshots/itinerary.png)
+
+**我的報帳**——幣別分列加總、請款金額自動換算，每筆費用可直接編輯：
+
+![我的報帳](docs/screenshots/expense.png)
+
+**手機版**——出差路上單手操作，拍照上傳就在拇指旁：
+
+<p>
+  <img src="docs/screenshots/mobile-itinerary.png" alt="手機版共同行程" width="32%">
+  &nbsp;
+  <img src="docs/screenshots/mobile-expense.png" alt="手機版我的報帳" width="32%">
+</p>
+
+---
+
 ## 🔒 共用行程，私有帳務
 
 協作不代表裸奔。快報 TripClaim 的權限設計原則：
