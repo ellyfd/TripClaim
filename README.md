@@ -262,6 +262,7 @@ npm test    # 建置 + 產物驗證 + node --test
 - [`tests/rendered-html.test.mjs`](tests/rendered-html.test.mjs)：開發預覽渲染與 metadata 驗證
 - [`tests/security-boundaries.test.mjs`](tests/security-boundaries.test.mjs)：API 權限邊界（未登入 401、非成員 403）
 - UI 變更另以 Playwright 於桌面（1440px）與行動（390px）雙視口實測，紀錄見 PR [#2](https://github.com/ellyfd/TripClaim/pull/2)、[#3](https://github.com/ellyfd/TripClaim/pull/3)、[#4](https://github.com/ellyfd/TripClaim/pull/4)
+- **自動測試＋合併**：PR 建立後由 [`auto-test-merge.yml`](.github/workflows/auto-test-merge.yml) 跑 `npm test`，通過且版本未變動即自動 squash 合併並刪除分支；限本人、本 repo、非 Draft 的 PR，掛 `no-auto-merge` 標籤可跳過
 
 ---
 
