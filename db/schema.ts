@@ -179,6 +179,12 @@ export const uploadedDocuments = sqliteTable("uploaded_documents", {
   extractionConfidence: integer("extraction_confidence"),
   extractionWarnings: text("extraction_warnings"),
   sourceExcerpt: text("source_excerpt"),
+  extractionRawText: text("extraction_raw_text"),
+  extractionCandidates: text("extraction_candidates"),
+  extractionMappingReason: text("extraction_mapping_reason"),
+  confirmedValues: text("confirmed_values"),
+  confirmedByEmail: text("confirmed_by_email"),
+  confirmedAt: text("confirmed_at"),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
 });

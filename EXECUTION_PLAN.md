@@ -86,7 +86,7 @@
 - [x] 離線可繼續拍照，背景同步或恢復連線後續傳。
 - [x] 圖片方向校正、長邊縮至 2200px、壓縮與清晰度檢查後再 OCR；模糊時要求人工確認。
 - [x] PDF 優先讀文字層；無文字層的掃描檔明確標示待確認；圖片 OCR worker 跨檔案重複使用。
-- [ ] OCR 保存 raw text、candidate、confidence、mapping reason 與 confirmed value。
+- [x] OCR 保存 raw text、candidate、confidence、mapping reason 與 confirmed value。
 
 完成定義：手機兩次點擊內完成上傳；一秒內獲得保存回饋；離線重啟後可續傳。
 
