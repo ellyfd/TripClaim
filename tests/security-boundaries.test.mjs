@@ -133,3 +133,18 @@ test("company claim and currency masters remain fixed",async()=>{
  assert.match(expense,/isManagedClaimType/);
  assert.match(expense,/MANAGED_CURRENCY_CODES/);
 });
+
+test("exports group by company claim type and reporting currency",async()=>{
+ const [grouping,route,inbox]=await Promise.all([
+  read("app/expense-export.ts"),
+  read("app/api/trips/[id]/export/route.ts"),
+  read("app/DocumentInbox.tsx"),
+ ]);
+ assert.match(grouping,/reportingCurrencyOf/);
+ assert.match(grouping,/const currency=reportingCurrencyOf\(item\),key=`\$\{item\.category\}/);
+ assert.match(route,/00_旅費報支彙總\.csv/);
+ assert.match(route,/00_費用明細\.csv/);
+ assert.match(route,/00_附件索引_manifest\.json/);
+ assert.match(route,/group\.folder/);
+ assert.match(inbox,/api\/trips\/\$\{encodeURIComponent\(tripId\)\}\/export/);
+});
