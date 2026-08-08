@@ -93,6 +93,23 @@ test("deleting a booking cascades to expense and orphaned attachment",async()=>{
  assert.match(route,/sourceBookingId/);
 });
 
+test("document extraction preserves AI evidence and human confirmation",async()=>{
+ const [upload,confirm,schema,migration]=await Promise.all([
+  read("app/api/documents/route.ts"),
+  read("app/api/documents/[id]/route.ts"),
+  read("db/schema.ts"),
+  read("drizzle/0015_extraction_audit.sql"),
+ ]);
+ for(const source of [upload,schema,migration]){
+  assert.match(source,/extractionRawText|extraction_raw_text/);
+  assert.match(source,/extractionCandidates|extraction_candidates/);
+  assert.match(source,/extractionMappingReason|extraction_mapping_reason/);
+ }
+ assert.match(confirm,/confirmedValues/);
+ assert.match(confirm,/confirmedByEmail/);
+ assert.match(confirm,/confirmedAt/);
+});
+
 test("manual flight registration starts with outbound and return segments",async()=>{
  const source=await read("app/TripTodoPanel.tsx");
  assert.match(source,/(?:next|base)==="flight"\?\[blankLeg\(\),blankLeg\(\)\]/);
