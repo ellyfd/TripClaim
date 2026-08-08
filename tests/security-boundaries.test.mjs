@@ -230,3 +230,11 @@ test("client image processing reuses OCR and prepares images before upload",asyn
   assert.doesNotMatch(source,/createWorker\("eng"\)/);
  }
 });
+
+test("PDF uploads prefer their text layer and flag scanned documents",async()=>{
+ const route=await read("app/api/documents/route.ts");
+ assert.match(route,/getDocumentProxy\(new Uint8Array\(bytes\)\)/);
+ assert.match(route,/extractText\(pdf,\{mergePages:true\}\)/);
+ assert.match(route,/PDF 沒有可讀文字層，可能是掃描檔/);
+ assert.ok(route.indexOf("extractText(pdf")<route.indexOf("inferDocumentType(extracted"));
+});
