@@ -43,12 +43,12 @@ test("managed airport directory drives ticket parsing",async()=>{
  assert.ok(route.indexOf('if(duplicate)return')>route.indexOf('prefill=parseDocument'));
 });
 
-test("deleting an expense cascades its evidence and linked itinerary",async()=>{
+test("deleting an expense soft-deletes its evidence and linked itinerary",async()=>{
  const source=await read("app/api/expenses/[id]/route.ts");
  assert.match(source,/uploadedDocuments/);
  assert.match(source,/travelBookings/);
  assert.match(source,/agendaItems/);
- assert.match(source,/cascade_delete/);
+ assert.match(source,/soft_delete_graph/);
 });
 
 test("deleting a legacy linked document cannot deadlock",async()=>{
@@ -235,6 +235,14 @@ test("card statement evidence saves TWD billing and links only to owned candidat
  assert.match(confirm,/invalid_expense_link/);assert.match(confirm,/eq\(personalExpenses\.ownerEmail,user\.email\)/);
  assert.match(matches,/cardMatch/);assert.match(matches,/amountMatch/);assert.match(matches,/ambiguous/);
  assert.match(inbox,/CardEvidenceMatcher/);assert.match(inbox,/系統不會自行猜測/);
+});
+
+test("expense graphs use recoverable soft deletion with audit and restore",async()=>{
+ const [schema,migration,documents,expenses,bookings,restore,inbox,summary]=await Promise.all([read("db/schema.ts"),read("drizzle/0020_recoverable_deletions.sql"),read("app/api/documents/[id]/route.ts"),read("app/api/expenses/[id]/route.ts"),read("app/api/trips/[id]/bookings/[bookingId]/route.ts"),read("app/api/trash/[kind]/[id]/route.ts"),read("app/DocumentInbox.tsx"),read("app/ExpenseSummary.tsx")]);
+ for(const source of [schema,migration])assert.match(source,/deleted_at|deletedAt/);
+ for(const source of [documents,expenses,bookings]){assert.match(source,/soft_delete_graph/);assert.match(source,/recoverable:true/);assert.doesNotMatch(source,/BUCKET\.delete/)}
+ assert.match(restore,/restore_graph/);assert.match(restore,/db\.batch\(writes\)/);assert.match(restore,/ownerEmail,user\.email/);
+ assert.match(inbox,/>復原</);assert.match(summary,/立即復原/);
 });
 
 test("expense workbench uses a desktop drawer and a mobile task order",async()=>{

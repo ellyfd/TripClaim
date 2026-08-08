@@ -161,6 +161,7 @@ export const personalExpenses = sqliteTable("personal_expenses", {
   exchangeRate: text("exchange_rate"),
   claimedTwdMinor: integer("claimed_twd_minor"),
   status: text("status", { enum: ["review", "ready", "missing"] }).notNull().default("review"),
+  deletedAt: text("deleted_at"),
   masterDataVersion: text("master_data_version").notNull().default("company-2026-08-v1"),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
@@ -198,6 +199,7 @@ export const uploadedDocuments = sqliteTable("uploaded_documents", {
   confirmedValues: text("confirmed_values"),
   confirmedByEmail: text("confirmed_by_email"),
   confirmedAt: text("confirmed_at"),
+  deletedAt: text("deleted_at"),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
 });

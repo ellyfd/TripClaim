@@ -20,16 +20,14 @@ export async function DELETE(request:NextRequest,{params}:P){
   if(!hasOtherActive){
    const [doc]=await db.select().from(uploadedDocuments).where(and(eq(uploadedDocuments.id,before.documentId),eq(uploadedDocuments.ownerEmail,user.email))).limit(1);
    if(doc){
-    const {env}=await import("cloudflare:workers");
-    await env.BUCKET.delete(doc.objectKey);
     await db.batch([
-     db.delete(personalExpenses).where(and(eq(personalExpenses.sourceDocumentId,doc.id),eq(personalExpenses.ownerEmail,user.email))),
-     db.delete(uploadedDocuments).where(and(eq(uploadedDocuments.id,doc.id),eq(uploadedDocuments.ownerEmail,user.email)))
+     db.update(personalExpenses).set({deletedAt:now,updatedAt:now}).where(and(eq(personalExpenses.sourceDocumentId,doc.id),eq(personalExpenses.ownerEmail,user.email))),
+     db.update(uploadedDocuments).set({deletedAt:now,updatedAt:now}).where(and(eq(uploadedDocuments.id,doc.id),eq(uploadedDocuments.ownerEmail,user.email)))
     ]);
     attachmentDeleted=true;
    }
   }
  }
- await recordAudit({tripId:id,actorEmail:user.email,entityType:"travel_booking",entityId:bookingId,action:"soft_delete",before,after:{keepExpense,attachmentDeleted}});
- return NextResponse.json({deleted:true,recoverable:true,expensePreserved:keepExpense,attachmentDeleted});
+ await recordAudit({tripId:id,actorEmail:user.email,entityType:"travel_booking",entityId:bookingId,action:"soft_delete_graph",before,after:{deletedAt:now,keepExpense,attachmentDeleted}});
+ return NextResponse.json({deleted:true,recoverable:true,undo:{kind:"booking",id:bookingId},expensePreserved:keepExpense,attachmentDeleted});
 }
