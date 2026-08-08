@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { getChatGPTUser } from "../../chatgpt-auth";
 import { getDb } from "../../../db";
 import { requireTripMember } from "../../../db/access";
@@ -8,7 +8,7 @@ import { uploadedDocuments } from "../../../db/schema";
 export async function GET(request:NextRequest){
  const user=await getChatGPTUser();if(!user)return NextResponse.json({error:"authentication_required"},{status:401});
  const tripId=request.nextUrl.searchParams.get("tripId");if(!tripId)return NextResponse.json({error:"trip_id_required"},{status:400});if(!await requireTripMember(tripId,user.email))return NextResponse.json({error:"forbidden"},{status:403});
- const db=await getDb();const docs=await db.select().from(uploadedDocuments).where(and(eq(uploadedDocuments.ownerEmail,user.email),eq(uploadedDocuments.tripId,tripId)));
+ const db=await getDb();const docs=await db.select().from(uploadedDocuments).where(and(eq(uploadedDocuments.ownerEmail,user.email),eq(uploadedDocuments.tripId,tripId),isNull(uploadedDocuments.deletedAt)));
  const normalized=docs.map(d=>d.documentType.toLowerCase());const has=(...terms:string[])=>normalized.some(x=>terms.some(t=>x.includes(t)));
  const requirements:{id:string;label:string;detail:string;status:"complete"|"missing"|"review"}[]=[];
  for(const doc of docs.filter(d=>d.paymentMethod==="credit_card"&&d.status==="ready")){
