@@ -1,6 +1,7 @@
 "use client";
 
 import {useMemo,useRef,useState} from "react";
+import {validateDestinationMaster} from "./master-data-validation";
 
 export type SheetAgenda={id:string;type:string;title:string;startsAt:string;endsAt?:string|null;timezone?:string|null;place?:string|null;address?:string|null;version:number};
 
@@ -16,7 +17,7 @@ export default function AgendaSheet({dates,rows,onAdd,onEdit,onDelete}:{dates:st
  const todayIndex=visibleDates.indexOf(new Date().toISOString().slice(0,10)),dayIndex=Math.min(selectedDayIndex??(todayIndex>=0?todayIndex:0),visibleDates.length-1);
  const hours=[...topRows,...hourRows(showFullDay?0:8,showFullDay?23:22)],hiddenTimeCount=rows.filter(row=>row.type!=="全天"&&row.type!=="住宿"&&(Number(row.startsAt.slice(11,13))<8||Number(row.startsAt.slice(11,13))>22)).length;
  const byCell=useMemo(()=>{const map=new Map<string,SheetAgenda[]>();for(const row of rows){const key=`${row.startsAt.slice(0,10)}|${cellKey(row)}`,list=map.get(key)??[];list.push(row);map.set(key,list)}return map},[rows]);
- const importFile=(file?:File)=>{if(!file)return;const ext=file.name.split(".").pop()?.toLowerCase();setImportMessage(ext==="csv"?`已讀取 ${file.name}；下一步將預覽欄位對應後才加入行程。`:`已接收 ${file.name}；將辨識日期、時間與內容，確認後再匯入。`)};
+ const importFile=async(file?:File)=>{if(!file)return;const ext=file.name.split(".").pop()?.toLowerCase();if(ext!=="csv"){setImportMessage(`已接收 ${file.name}；將先轉成欄位預覽，再用公司主檔驗證後匯入。`);return}const lines=(await file.text()).split(/\r?\n/).filter(Boolean),headers=(lines.shift()??"").split(",").map(x=>x.trim().replace(/^"|"$/g,"")),rows=lines.map(line=>Object.fromEntries(line.split(",").map((value,index)=>[headers[index],value.trim().replace(/^"|"$/g,"")])));const locationRows=rows.filter(row=>row.countryCode||row.countryName||row.cityName),invalid=locationRows.filter(row=>!validateDestinationMaster({countryCode:row.countryCode,countryName:row.countryName,cityName:row.cityName}).valid);setImportMessage(invalid.length?`已讀取 ${rows.length} 列；${invalid.length} 列地點無法對應公司主檔，將進例外清單，不會直接匯入。`:`已讀取 ${rows.length} 列；主檔驗證通過，下一步預覽後再加入行程。`)};
  const imageFile=(file?:File)=>{if(!file)return;setImportMessage(`已接收 ${file.name}；截圖／PDF會先轉成表格預覽，低信心欄位需人工確認。`)};
  return <section className="agenda-sheet-wrap">
   <div className="agenda-sheet-toolbar">
