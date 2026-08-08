@@ -43,7 +43,7 @@
 - [x] 費用加入 originalCurrency、originalAmount、reportingCurrency、reportingAmount。
 - [x] 保存匯率、匯率來源、轉換原因與人工確認狀態的資料欄位。
 - [x] 未知幣別不再靜默覆蓋為 TWD；文件確認改為保留原幣並要求 TWD 申報。
-- [ ] API、OCR、Excel／CSV 匯入共用同一驗證服務。
+- [x] API、OCR、Excel／CSV 匯入共用同一驗證服務。
 - [ ] 舊資料無法映射時進例外清單，不自動歸類為「其他」。
 
 完成定義：非法主檔值無法寫入；原始幣別不會消失；同一筆資料可完整還原辨識與申報決策。
