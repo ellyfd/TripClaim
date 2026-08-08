@@ -3,7 +3,7 @@ import {desc,eq} from "drizzle-orm";
 import {getChatGPTUser} from "../../chatgpt-auth";
 import {ensureUser,recordAudit} from "../../../db/access";
 import {agendaItems,travelBookings,tripDestinations,tripMembers,tripMemberTodos,trips} from "../../../db/schema";
-import {isManagedDestination} from "../../managed-config";
+import {isManagedDestination,MASTER_DATA_VERSION} from "../../managed-config";
 
 export async function GET(){
  const user=await getChatGPTUser();if(!user)return NextResponse.json({error:"authentication_required"},{status:401});
@@ -16,5 +16,5 @@ export async function POST(request:NextRequest){
  const user=await getChatGPTUser();if(!user)return NextResponse.json({error:"authentication_required"},{status:401});
  const input=await request.json() as {name?:string;purpose?:string;startsOn?:string;endsOn?:string;destinations?:Array<{countryCode:string;countryName:string;cityCode?:string;cityName:string;timezone?:string}>};if(!input.name?.trim()||!input.startsOn||!input.endsOn)return NextResponse.json({error:"invalid_input"},{status:400});
  if(!input.destinations?.length||!input.destinations.every(x=>isManagedDestination(x.countryCode,x.countryName,x.cityName)))return NextResponse.json({error:"invalid_destination_master_data"},{status:400});
- const db=await ensureUser(user),now=new Date().toISOString(),id=crypto.randomUUID();await db.batch([db.insert(trips).values({id,name:input.name.trim(),purpose:input.purpose?.trim(),startsOn:input.startsOn,endsOn:input.endsOn,createdByEmail:user.email,status:"draft",createdAt:now,updatedAt:now}),db.insert(tripMembers).values({id:crypto.randomUUID(),tripId:id,userEmail:user.email,role:"creator",joinedAt:now}),...(input.destinations??[]).map((x,i)=>db.insert(tripDestinations).values({id:crypto.randomUUID(),tripId:id,countryCode:x.countryCode,countryName:x.countryName,cityCode:x.cityCode,cityName:x.cityName,timezone:x.timezone,sequence:i}))]);await recordAudit({tripId:id,actorEmail:user.email,entityType:"trip",entityId:id,action:"create",after:input});return NextResponse.json({id,saved:true},{status:201});
+ const db=await ensureUser(user),now=new Date().toISOString(),id=crypto.randomUUID();await db.batch([db.insert(trips).values({id,name:input.name.trim(),purpose:input.purpose?.trim(),startsOn:input.startsOn,endsOn:input.endsOn,createdByEmail:user.email,status:"draft",masterDataVersion:MASTER_DATA_VERSION,createdAt:now,updatedAt:now}),db.insert(tripMembers).values({id:crypto.randomUUID(),tripId:id,userEmail:user.email,role:"creator",joinedAt:now}),...(input.destinations??[]).map((x,i)=>db.insert(tripDestinations).values({id:crypto.randomUUID(),tripId:id,countryCode:x.countryCode,countryName:x.countryName,cityCode:x.cityCode,cityName:x.cityName,timezone:x.timezone,sequence:i}))]);await recordAudit({tripId:id,actorEmail:user.email,entityType:"trip",entityId:id,action:"create",after:{...input,masterDataVersion:MASTER_DATA_VERSION}});return NextResponse.json({id,saved:true,masterDataVersion:MASTER_DATA_VERSION},{status:201});
 }
