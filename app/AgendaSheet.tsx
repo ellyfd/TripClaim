@@ -11,19 +11,20 @@ const cellKey=(item:SheetAgenda)=>{if(item.type==="住宿")return "住宿";if(it
 const typeFor=(time:string)=>time==="08:00"?"早餐":time==="12:00"||time==="13:00"?"午餐":time==="19:00"||time==="20:00"?"晚餐":time==="住宿"?"住宿":"會議";
 
 export default function AgendaSheet({dates,rows,onAdd,onEdit,onDelete}:{dates:string[];rows:SheetAgenda[];onAdd:(date:string,time:string)=>void;onEdit:(row:SheetAgenda)=>void;onDelete:(row:SheetAgenda)=>void}){
- const [dayIndex,setDayIndex]=useState(0),[importMessage,setImportMessage]=useState(""),[density,setDensity]=useState<"overview"|"edit">("overview"),[showFullDay,setShowFullDay]=useState(false),[scrolledX,setScrolledX]=useState(false);const fileRef=useRef<HTMLInputElement>(null),imageRef=useRef<HTMLInputElement>(null);
+ const [selectedDayIndex,setSelectedDayIndex]=useState<number|null>(null),[importMessage,setImportMessage]=useState(""),[density,setDensity]=useState<"overview"|"edit">("overview"),[showFullDay,setShowFullDay]=useState(false),[scrolledX,setScrolledX]=useState(false);const fileRef=useRef<HTMLInputElement>(null),imageRef=useRef<HTMLInputElement>(null);
  const visibleDates=dates.length?dates:["2026-06-16"];
+ const todayIndex=visibleDates.indexOf(new Date().toISOString().slice(0,10)),dayIndex=Math.min(selectedDayIndex??(todayIndex>=0?todayIndex:0),visibleDates.length-1);
  const hours=[...topRows,...hourRows(showFullDay?0:8,showFullDay?23:22)],hiddenTimeCount=rows.filter(row=>row.type!=="全天"&&row.type!=="住宿"&&(Number(row.startsAt.slice(11,13))<8||Number(row.startsAt.slice(11,13))>22)).length;
  const byCell=useMemo(()=>{const map=new Map<string,SheetAgenda[]>();for(const row of rows){const key=`${row.startsAt.slice(0,10)}|${cellKey(row)}`,list=map.get(key)??[];list.push(row);map.set(key,list)}return map},[rows]);
  const importFile=(file?:File)=>{if(!file)return;const ext=file.name.split(".").pop()?.toLowerCase();setImportMessage(ext==="csv"?`已讀取 ${file.name}；下一步將預覽欄位對應後才加入行程。`:`已接收 ${file.name}；將辨識日期、時間與內容，確認後再匯入。`)};
  const imageFile=(file?:File)=>{if(!file)return;setImportMessage(`已接收 ${file.name}；截圖／PDF會先轉成表格預覽，低信心欄位需人工確認。`)};
  return <section className="agenda-sheet-wrap">
   <div className="agenda-sheet-toolbar">
-   <div><b>共同行程表</b><span>點空白格新增；點內容編輯或刪除</span></div>
+   <div><b><span className="desktop-agenda-title">共同行程表</span><span className="mobile-agenda-title">今日行程</span></b><span>點空白格新增；點內容編輯或刪除</span></div>
    <div className="agenda-toolbar-actions"><div className="agenda-view-toggle"><button className={density==="overview"?"on":""} onClick={()=>setDensity("overview")}>全天總覽</button><button className={density==="edit"?"on":""} onClick={()=>setDensity("edit")}>舒適編輯</button></div><button className={showFullDay?"active-time-range":""} onClick={()=>setShowFullDay(value=>!value)}>{showFullDay?"只看 08–22":`完整 24 小時${hiddenTimeCount?`（${hiddenTimeCount}）`:""}`}</button><button onClick={()=>fileRef.current?.click()}>↑ 匯入 Excel／CSV</button><button onClick={()=>imageRef.current?.click()}>▧ 讀取截圖／PDF</button><input ref={fileRef} hidden type="file" accept=".xlsx,.xls,.csv" onChange={e=>importFile(e.target.files?.[0])}/><input ref={imageRef} hidden type="file" accept="image/*,.pdf" onChange={e=>imageFile(e.target.files?.[0])}/></div>
   </div>
   {importMessage&&<div className="agenda-import-message"><span>{importMessage}</span><button onClick={()=>setImportMessage("")}>關閉</button></div>}
-  <div className="agenda-mobile-days">{visibleDates.map((d,i)=><button className={i===dayIndex?"on":""} key={d} onClick={()=>setDayIndex(i)}>{dayLabel(d)}</button>)}</div>
+  <div className="agenda-mobile-days">{visibleDates.map((d,i)=><button className={i===dayIndex?"on":""} key={d} onClick={()=>setSelectedDayIndex(i)}>{dayLabel(d)}</button>)}</div>
   <div className="agenda-sheet-scrollwrap">
   {visibleDates.length>6&&!scrolledX&&<span className="sheet-scroll-more" aria-hidden="true">→ 橫向捲動看更多天</span>}
   <div className={`agenda-sheet density-${density}`} onScroll={e=>{if(e.currentTarget.scrollLeft>40)setScrolledX(true)}}>
@@ -36,7 +37,7 @@ export default function AgendaSheet({dates,rows,onAdd,onEdit,onDelete}:{dates:st
    </div>
   </div>
   </div>
-  <p className="agenda-sheet-tip">桌機可橫向看多天；「全天總覽」看全貌、「舒適編輯」放大操作。機票、住宿與個人待辦集中在表格下方。</p>
+  <p className="agenda-sheet-tip"><span className="desktop-agenda-title">桌機可橫向看多天；「全天總覽」看全貌、「舒適編輯」放大操作。</span><span className="mobile-agenda-title">左右切換日期；全天與住宿固定顯示在最上方。</span> 機票、住宿與個人待辦集中在表格下方。</p>
  </section>;
 }
 
