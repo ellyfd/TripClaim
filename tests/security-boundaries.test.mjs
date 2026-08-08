@@ -205,3 +205,14 @@ test("mobile expenses prioritize today's tasks while desktop keeps full reportin
  assert.match(styles,/\.expense-real-list article:nth-child\(n\+6\)\{display:none\}/);
  assert.match(styles,/\.expense-workbench-main \.expense-totals\{display:none\}/);
 });
+
+test("PWA uploads persist before network delivery and retry after reconnect",async()=>{
+ const [worker,register]=await Promise.all([read("public/sw.js"),read("app/PWARegister.tsx")]);
+ assert.match(worker,/indexedDB\.open\(UPLOAD_DB/);
+ assert.match(worker,/const id = crypto\.randomUUID\(\)/);
+ assert.ok(worker.indexOf("await saveUpload(request)")<worker.indexOf("await fetch(request.clone())"));
+ assert.match(worker,/tripclaim-upload/);
+ assert.match(worker,/已保存在手機，恢復連線後自動辨識/);
+ assert.match(register,/window\.addEventListener\("online", flush\)/);
+ assert.match(register,/tripclaim-flush-uploads/);
+});

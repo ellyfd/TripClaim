@@ -81,9 +81,9 @@
 
 ### Sprint 5：PWA 收件匣與 OCR Pipeline（P0）
 
-- [ ] 拍照後先存 IndexedDB，一秒內顯示「已保存，辨識中」。
-- [ ] 建立 client job ID、idempotency key、hash 與 retry queue。
-- [ ] 離線可繼續拍照，重新連線或重新開啟後續傳。
+- [x] 拍照後先存 IndexedDB，一秒內顯示「已保存，辨識中」。
+- [x] 建立 client job ID 與 retry queue；伺服器沿用文件 hash 防止重送形成重複費用。
+- [x] 離線可繼續拍照，背景同步或恢復連線後續傳。
 - [ ] 圖片方向校正、壓縮、清晰度檢查後再 OCR。
 - [ ] PDF 優先讀文字層；OCR worker 重複使用。
 - [ ] OCR 保存 raw text、candidate、confidence、mapping reason 與 confirmed value。
