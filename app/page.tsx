@@ -38,11 +38,12 @@ export default function Home(){
  const goTrips=()=>{setStage("create");setActiveTrip(null)};
  const openTrip=(trip:ActiveTrip,target:"itinerary"|"expense")=>{setActiveTrip(trip);setStage(target)};
  const scrollExpense=(selector:string)=>{setStage("expense");setTimeout(()=>document.querySelector(selector)?.scrollIntoView({behavior:"smooth",block:"start"}),80)};
- const mobileBottomNav=activeTrip&&<nav className="mobile-nav" aria-label="手機主要功能">
-  <button className={stage==="itinerary"?"on":""} onClick={()=>setStage("itinerary")}><i>⌂</i><span>行程</span></button>
-  <button className={stage==="expense"?"on":""} onClick={()=>scrollExpense(".expense-workbench-page")}><i>▤</i><span>報帳</span></button>
-  <button className="camera" onClick={()=>{setStage("expense");setTimeout(()=>window.dispatchEvent(new Event("tripclaim:upload")),80)}}><i>＋</i><span>上傳</span></button>
-  <button onClick={()=>scrollExpense(".missing-live")}><i>!</i><span>待辦</span></button>
+ const needsTrip=(action:()=>void)=>activeTrip?action():show("請先建立或選擇一趟出差");
+ const mobileBottomNav=<nav className="mobile-nav" aria-label="手機主要功能">
+  <button className={stage==="create"?"on":""} onClick={goTrips}><i>⌂</i><span>出差</span></button>
+  <button className={stage==="itinerary"?"on":""} aria-disabled={!activeTrip} onClick={()=>needsTrip(()=>setStage("itinerary"))}><i>▤</i><span>今日</span></button>
+  <button className="camera" aria-disabled={!activeTrip} onClick={()=>needsTrip(()=>{setStage("expense");setTimeout(()=>window.dispatchEvent(new Event("tripclaim:upload")),80)})}><i>＋</i><span>上傳</span></button>
+  <button aria-disabled={!activeTrip} onClick={()=>needsTrip(()=>scrollExpense(".missing-live"))}><i>!</i><span>待辦</span></button>
   <button onClick={()=>setManage("personal")}><i>●</i><span>我的</span></button>
  </nav>;
  const management=manage&&<SystemManagement account={account} mode={manage} onClose={()=>setManage(null)} onProfileSaved={profile=>setAccount(current=>({...current,...profile}))}/>;
