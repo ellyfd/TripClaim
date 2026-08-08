@@ -138,16 +138,15 @@ test("unknown currencies preserve the original and require TWD reporting",async(
 });
 
 test("company claim and currency masters remain fixed",async()=>{
- const [config,documents,expense]=await Promise.all([
+ const [config,validation,documents,expense]=await Promise.all([
   read("app/managed-config.ts"),
+  read("app/master-data-validation.ts"),
   read("app/api/documents/[id]/route.ts"),
   read("app/api/expenses/[id]/route.ts"),
  ]);
  assert.match(config,/刻意不提供 save/);
- assert.match(documents,/isManagedClaimType/);
- assert.match(documents,/MANAGED_CURRENCY_CODES/);
- assert.match(expense,/isManagedClaimType/);
- assert.match(expense,/MANAGED_CURRENCY_CODES/);
+ assert.match(validation,/isManagedClaimType/);assert.match(validation,/MANAGED_CURRENCY_CODES/);
+ assert.match(documents,/validateExpenseMaster/);assert.match(expense,/validateExpenseMaster/);
 });
 
 test("formal records pin the immutable company master version",async()=>{
@@ -170,7 +169,7 @@ test("formal records store master codes and reject unmapped labels",async()=>{
  assert.match(config,/CLAIM_TYPE_CODES/);assert.match(config,/resolveManagedDestination/);
  assert.match(schema,/masterDataExceptions/);assert.match(schema,/categoryCode/);
  for(const source of [trips,tripEdit])assert.match(source,/cityCode/);
- assert.match(documents,/masterDataExceptions/);assert.match(expenses,/managedClaimTypeCode/);
+ assert.match(documents,/masterDataExceptions/);assert.match(expenses,/categoryCode:master.claimTypeCode/);
  assert.match(migration,/master_data_exceptions/);
 });
 
@@ -181,6 +180,17 @@ test("legacy data is backfilled only when deterministic",async()=>{
  assert.match(migration,/category_code` IS NULL/);
  assert.match(migration,/city_code` IS NULL/);
  assert.doesNotMatch(migration,/ELSE 'EXP-/);
+});
+
+test("API, OCR and CSV import share one master-data validation service",async()=>{
+ const [service,trips,tripEdit,documents,confirm,expenses,agenda]=await Promise.all([
+  read("app/master-data-validation.ts"),read("app/api/trips/route.ts"),read("app/api/trips/[id]/route.ts"),
+  read("app/api/documents/route.ts"),read("app/api/documents/[id]/route.ts"),read("app/api/expenses/[id]/route.ts"),read("app/AgendaSheet.tsx"),
+ ]);
+ assert.match(service,/validateExpenseMaster/);assert.match(service,/validateDestinationMaster/);
+ for(const source of [trips,tripEdit])assert.match(source,/validateDestinationMaster/);
+ for(const source of [documents,confirm,expenses])assert.match(source,/validateExpenseMaster/);
+ assert.match(agenda,/validateDestinationMaster/);
 });
 
 test("exports group by company claim type and reporting currency",async()=>{
