@@ -222,6 +222,14 @@ test("card statements remain evidence and foreign fees are separate TWD expenses
  assert.match(workbench,/批次核對與 CSV、Excel、PDF、ZIP 請回電腦版處理/);
 });
 
+test("card statement evidence saves TWD billing and links only to owned candidate expenses",async()=>{
+ const [schema,migration,confirm,matches,inbox]=await Promise.all([read("db/schema.ts"),read("drizzle/0019_card_statement_links.sql"),read("app/api/documents/[id]/route.ts"),read("app/api/documents/[id]/matches/route.ts"),read("app/DocumentInbox.tsx")]);
+ for(const source of [schema,migration]){assert.match(source,/linked_expense_id|linkedExpenseId/);assert.match(source,/billed_twd_minor|billedTwdMinor/)}
+ assert.match(confirm,/invalid_expense_link/);assert.match(confirm,/eq\(personalExpenses\.ownerEmail,user\.email\)/);
+ assert.match(matches,/cardMatch/);assert.match(matches,/amountMatch/);assert.match(matches,/ambiguous/);
+ assert.match(inbox,/CardEvidenceMatcher/);assert.match(inbox,/系統不會自行猜測/);
+});
+
 test("expense workbench uses a desktop drawer and a mobile task order",async()=>{
  const [workbench,styles]=await Promise.all([
   read("app/ExpenseWizardLive.tsx"),

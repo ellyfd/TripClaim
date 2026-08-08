@@ -185,6 +185,8 @@ export const uploadedDocuments = sqliteTable("uploaded_documents", {
   detectedAmountMinor: integer("detected_amount_minor"),
   paymentMethod: text("payment_method", { enum: ["cash", "credit_card", "other"] }),
   cardLast4: text("card_last4"),
+  linkedExpenseId: text("linked_expense_id"),
+  billedTwdMinor: integer("billed_twd_minor"),
   suggestedName: text("suggested_name"),
   status: text("status", { enum: ["uploaded", "processing", "review", "ready", "failed"] }).notNull().default("uploaded"),
   extractionConfidence: integer("extraction_confidence"),
