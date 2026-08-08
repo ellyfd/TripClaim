@@ -4,6 +4,7 @@ import DocumentInbox from "./DocumentInbox";
 import CardCenter from "./CardCenter";
 import MissingRequirements from "./MissingRequirements";
 import ExpenseSummary from "./ExpenseSummary";
+import MobileExpenseOverview from "./MobileExpenseOverview";
 type Result={name:string;state:"uploading"|"scanning"|"review"|"done"|"duplicate"|"failed";confidence?:number;warnings?:string[]};
 
 export default function ExpenseWizardLive({onBack}:{onBack:()=>void}){
@@ -30,6 +31,7 @@ export default function ExpenseWizardLive({onBack}:{onBack:()=>void}){
   {pageState==="loading"&&<section className="expense-page-notice panel"><b>正在開啟我的報帳…</b><span>正在讀取目前出差與本人資料。</span></section>}
   {pageState==="unavailable"&&<section className="expense-page-notice panel"><b>尚未選擇出差</b><span>請先回到「我的出差」選擇一趟，再進入個人報帳。</span><button onClick={onBack}>返回共同行程</button></section>}
   {pageState==="ready"&&<>
+  <MobileExpenseOverview tripId={tripId} refreshKey={refreshKey}/>
   <div className="expense-workbench-grid"><section className="expense-workbench-main" id="expense-records"><ExpenseSummary tripId={tripId} refreshKey={refreshKey}/></section>
    <aside className={`expense-tools ${showDesktopTools?"drawer-open":""}`}>
     <div className="expense-drawer-head"><b>報帳工具</b><button onClick={()=>setShowDesktopTools(false)} aria-label="關閉工具">×</button></div>

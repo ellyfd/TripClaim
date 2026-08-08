@@ -191,3 +191,17 @@ test("mobile itinerary is a focused today mode with persistent navigation",async
  assert.match(styles,/\.agenda-sheet-editor\{position:fixed!important/);
  assert.match(styles,/\.agenda-toolbar-actions>\.agenda-view-toggle/);
 });
+
+test("mobile expenses prioritize today's tasks while desktop keeps full reporting",async()=>{
+ const [overview,workbench,styles]=await Promise.all([
+  read("app/MobileExpenseOverview.tsx"),
+  read("app/ExpenseWizardLive.tsx"),
+  read("app/globals.css"),
+ ]);
+ assert.match(overview,/>今日費用</);
+ assert.match(overview,/>待確認</);
+ assert.match(overview,/>最近費用</);
+ assert.match(workbench,/mobile-expense-more/);
+ assert.match(styles,/\.expense-real-list article:nth-child\(n\+6\)\{display:none\}/);
+ assert.match(styles,/\.expense-workbench-main \.expense-totals\{display:none\}/);
+});
