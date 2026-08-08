@@ -12,7 +12,14 @@ export default function PWARegister() {
     };
     if (document.readyState === "complete") register();
     else window.addEventListener("load", register, { once: true });
-    return () => window.removeEventListener("load", register);
+    const flush = () => navigator.serviceWorker.controller?.postMessage({ type: "tripclaim-flush-uploads" });
+    const receive = (event: MessageEvent) => {
+      if (event.data?.type === "tripclaim-upload-saved") window.dispatchEvent(new CustomEvent("tripclaim:upload-saved"));
+      if (event.data?.type === "tripclaim-upload-synced") window.dispatchEvent(new CustomEvent("tripclaim:data-changed"));
+    };
+    window.addEventListener("online", flush);
+    navigator.serviceWorker.addEventListener("message", receive);
+    return () => {window.removeEventListener("load", register);window.removeEventListener("online", flush);navigator.serviceWorker.removeEventListener("message", receive)};
   }, []);
 
   return null;
