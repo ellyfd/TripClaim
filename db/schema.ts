@@ -16,6 +16,7 @@ export const trips = sqliteTable("trips", {
   endsOn: text("ends_on").notNull(),
   createdByEmail: text("created_by_email").notNull(),
   status: text("status", { enum: ["draft", "active", "archived"] }).notNull().default("draft"),
+  masterDataVersion: text("master_data_version").notNull().default("company-2026-08-v1"),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
 });
@@ -151,6 +152,7 @@ export const personalExpenses = sqliteTable("personal_expenses", {
   exchangeRate: text("exchange_rate"),
   claimedTwdMinor: integer("claimed_twd_minor"),
   status: text("status", { enum: ["review", "ready", "missing"] }).notNull().default("review"),
+  masterDataVersion: text("master_data_version").notNull().default("company-2026-08-v1"),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
 });

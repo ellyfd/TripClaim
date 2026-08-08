@@ -5,6 +5,8 @@ export const DEFAULT_CURRENCIES=[
  ["INR","印度盧比"],["ETB","衣索比亞比爾"],["BDT","孟加拉塔卡"],["AED","阿聯迪拉姆"],
  ["JOD","約旦丁那"],["EGP","埃及鎊"],["THB","泰銖"],["SGD","新加坡幣"],["AUD","澳幣"]
 ] as const;
+// 公司系統主檔的不可變版本。正式資料需保存此版本，不能只保存畫面文字。
+export const MASTER_DATA_VERSION="company-2026-08-v1";
 export const DEFAULT_CLAIM_TYPES=["機票(自行刷卡)","住宿","車資","落地簽證費","預支歸還","餐飲","交際費／伴手禮","行李託運費","疫苗／檢測費用","探親樣衣","無報支費用","電信網路費","簽證費用","國外交易手續費"];
 export const DEFAULT_COUNTRIES=["澳洲 AUS","奧地利 AUT","比利時 BEL","孟加拉 BGD","加拿大 CAN","瑞士 CHE","中國大陸 CHN","德國 DEU","丹麥 DNK","多明尼加 DOM","西班牙 ESP","衣索比亞 ETH","法國 FRA","英國 GBR","瓜地馬拉 GTM","香港 HKG","宏都拉斯 HND","印度 IND","印尼 IDN","義大利 ITA","日本 JPN","約旦 JOR","韓國 KOR","馬來西亞 MYS","紐西蘭 NZL","荷蘭 NLD","菲律賓 PHL","波蘭 POL","新加坡 SGP","泰國 THA","土耳其 TUR","台灣 TWN","阿聯 UAE","美國 USA","越南 VNM"];
 export const DEFAULT_DESTINATIONS:Record<string,string[]>={

@@ -150,6 +150,18 @@ test("company claim and currency masters remain fixed",async()=>{
  assert.match(expense,/MANAGED_CURRENCY_CODES/);
 });
 
+test("formal records pin the immutable company master version",async()=>{
+ const [config,schema,trips,bookings,documents,migration]=await Promise.all([
+  read("app/managed-config.ts"),read("db/schema.ts"),read("app/api/trips/route.ts"),
+  read("app/api/trips/[id]/bookings/route.ts"),read("app/api/documents/[id]/route.ts"),
+  read("drizzle/0016_master_data_version.sql"),
+ ]);
+ assert.match(config,/MASTER_DATA_VERSION/);
+ assert.match(schema,/masterDataVersion/);
+ for(const source of [trips,bookings,documents])assert.match(source,/MASTER_DATA_VERSION/);
+ assert.match(migration,/master_data_version/);
+});
+
 test("exports group by company claim type and reporting currency",async()=>{
  const [grouping,route,inbox]=await Promise.all([
   read("app/expense-export.ts"),
