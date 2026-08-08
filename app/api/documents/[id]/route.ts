@@ -4,7 +4,8 @@ import { getChatGPTUser } from "../../../chatgpt-auth";
 import { getDb } from "../../../../db";
 import { recordAudit, requireTripMember } from "../../../../db/access";
 import { agendaItems, personalExpenses, travelBookings, uploadedDocuments } from "../../../../db/schema";
-import {decideReportingCurrency,isManagedClaimType,managedClaimTypeCode,MANAGED_CURRENCY_CODES,MASTER_DATA_VERSION} from "../../../managed-config";
+import {MASTER_DATA_VERSION} from "../../../managed-config";
+import {validateExpenseMaster} from "../../../master-data-validation";
 
 export async function GET(request:NextRequest,{params}:{params:Promise<{id:string}>}){
  const user=await getChatGPTUser(); if(!user)return NextResponse.json({error:"authentication_required"},{status:401});
@@ -21,11 +22,12 @@ export async function PATCH(request:NextRequest,{params}:{params:Promise<{id:str
  const {id}=await params; const input=await request.json() as {claimType?:string;expenseDate?:string;merchant?:string;currency?:string;amountMinor?:number;originalCurrency?:string;originalAmountMinor?:number;reportingCurrency?:string;reportingAmountMinor?:number;paymentMethod?:"cash"|"credit_card"|"other";cardLast4?:string;suggestedName?:string;status?:"review"|"ready"};
  const db=await getDb();const [before]=await db.select().from(uploadedDocuments).where(and(eq(uploadedDocuments.id,id),eq(uploadedDocuments.ownerEmail,user.email))).limit(1);if(!before)return NextResponse.json({error:"not_found"},{status:404});if(!await requireTripMember(before.tripId,user.email,{write:true}))return NextResponse.json({error:"forbidden"},{status:403});
  const isCardEvidence=before.documentType.includes("信用卡帳單")||before.documentType.includes("刷卡單");
- if(!isCardEvidence&&!isManagedClaimType(input.claimType))return NextResponse.json({error:"invalid_claim_type"},{status:400});
+ const originalCurrency=(input.originalCurrency??before.detectedCurrency??before.currency??"TWD").toUpperCase(),master=validateExpenseMaster({claimType:input.claimType,originalCurrency,reportingCurrency:input.reportingCurrency??input.currency});
+ if(!isCardEvidence&&!master.claimTypeCode)return NextResponse.json({error:"invalid_claim_type",issues:master.issues},{status:400});
  if(isCardEvidence&&input.claimType&&input.claimType!=="國外交易手續費")return NextResponse.json({error:"card_evidence_is_not_expense",message:"信用卡帳單與刷卡單是付款證明；只有國外交易手續費可另列 TWD 費用"},{status:400});
  const safeName=input.suggestedName?.replace(/[^\p{L}\p{N}._-]+/gu,"-").slice(0,180);
- const originalCurrency=(input.originalCurrency??before.detectedCurrency??before.currency??"TWD").toUpperCase(),originalAmountMinor=input.originalAmountMinor??before.detectedAmountMinor??input.amountMinor??before.amountMinor??0,decision=decideReportingCurrency(originalCurrency),reportingCurrency=(input.reportingCurrency??input.currency??decision.reportingCurrency).toUpperCase();
- if(!MANAGED_CURRENCY_CODES.has(reportingCurrency))return NextResponse.json({error:"invalid_reporting_currency"},{status:400});
+ const originalAmountMinor=input.originalAmountMinor??before.detectedAmountMinor??input.amountMinor??before.amountMinor??0,decision=master.currencyDecision,reportingCurrency=master.reportingCurrency;
+ if(master.issues.some(issue=>issue.field==="reportingCurrency"))return NextResponse.json({error:"invalid_reporting_currency",issues:master.issues},{status:400});
  const reportingAmountMinor=input.reportingAmountMinor??(reportingCurrency===originalCurrency?originalAmountMinor:undefined);
  if(input.claimType==="國外交易手續費"&&reportingCurrency!=="TWD")return NextResponse.json({error:"foreign_fee_must_be_twd",message:"國外交易手續費只能以 TWD 報支"},{status:400});
  if(input.status==="ready"&&decision.requiresTwd&&(reportingCurrency!=="TWD"||typeof reportingAmountMinor!=="number"))return NextResponse.json({error:"twd_reporting_amount_required",message:decision.reason},{status:400});
@@ -33,7 +35,7 @@ export async function PATCH(request:NextRequest,{params}:{params:Promise<{id:str
  if(!result.length)return NextResponse.json({error:"not_found"},{status:404});
  const shouldCreateExpense=!isCardEvidence||input.claimType==="國外交易手續費";
  if(input.status==="ready"&&shouldCreateExpense&&input.expenseDate&&input.merchant&&typeof reportingAmountMinor==="number"){
-  const [existing]=await db.select({id:personalExpenses.id}).from(personalExpenses).where(and(eq(personalExpenses.sourceDocumentId,id),eq(personalExpenses.ownerEmail,user.email))).limit(1);const values={tripId:result[0].tripId,ownerEmail:user.email,sourceDocumentId:id,category:input.claimType,categoryCode:managedClaimTypeCode(input.claimType),merchant:input.merchant,expenseDate:input.expenseDate,amountMinor:reportingAmountMinor,currency:reportingCurrency,originalAmountMinor,originalCurrency,reportingAmountMinor,reportingCurrency,currencyDecisionReason:decision.reason,claimedTwdMinor:reportingCurrency==="TWD"?reportingAmountMinor:null,cardLast4:input.paymentMethod==="credit_card"?input.cardLast4:null,status:"ready" as const,masterDataVersion:MASTER_DATA_VERSION,updatedAt:now};if(existing)await db.update(personalExpenses).set(values).where(eq(personalExpenses.id,existing.id));else await db.insert(personalExpenses).values({id:crypto.randomUUID(),...values,createdAt:now});
+  const [existing]=await db.select({id:personalExpenses.id}).from(personalExpenses).where(and(eq(personalExpenses.sourceDocumentId,id),eq(personalExpenses.ownerEmail,user.email))).limit(1);const values={tripId:result[0].tripId,ownerEmail:user.email,sourceDocumentId:id,category:input.claimType,categoryCode:master.claimTypeCode,merchant:input.merchant,expenseDate:input.expenseDate,amountMinor:reportingAmountMinor,currency:reportingCurrency,originalAmountMinor,originalCurrency,reportingAmountMinor,reportingCurrency,currencyDecisionReason:decision.reason,claimedTwdMinor:reportingCurrency==="TWD"?reportingAmountMinor:null,cardLast4:input.paymentMethod==="credit_card"?input.cardLast4:null,status:"ready" as const,masterDataVersion:MASTER_DATA_VERSION,updatedAt:now};if(existing)await db.update(personalExpenses).set(values).where(eq(personalExpenses.id,existing.id));else await db.insert(personalExpenses).values({id:crypto.randomUUID(),...values,createdAt:now});
  }
  if(input.status==="ready"&&!shouldCreateExpense)await db.delete(personalExpenses).where(and(eq(personalExpenses.sourceDocumentId,id),eq(personalExpenses.ownerEmail,user.email)));
  await recordAudit({tripId:before.tripId,actorEmail:user.email,entityType:"uploaded_document",entityId:id,action:"confirm",before,after:input});
