@@ -4,9 +4,9 @@ import {extractText,getDocumentProxy} from "unpdf";
 import {getChatGPTUser} from "../../chatgpt-auth";
 import {getDb} from "../../../db";
 import {requireTripMember} from "../../../db/access";
-import {uploadedDocuments} from "../../../db/schema";
+import {masterDataExceptions,uploadedDocuments} from "../../../db/schema";
 import {MANAGED_AIRPORT_CODES,normalizeManagedAirportText} from "../../airport-directory";
-import {decideReportingCurrency} from "../../managed-config";
+import {decideReportingCurrency,MASTER_DATA_VERSION} from "../../managed-config";
 const allowed=new Set(["image/jpeg","image/png","image/webp","image/heic","image/heif","application/pdf"]);
 
 const pad=(value:string|number)=>String(value).padStart(2,"0");
@@ -83,6 +83,7 @@ export async function POST(request:NextRequest){
  const {env}=await import("cloudflare:workers");await env.BUCKET.put(objectKey,bytes,{httpMetadata:{contentType:file.type},customMetadata:{owner:user.email,tripId,documentType}});
  const extractionCandidates={documentType,claimType,title:prefill.title,startAt:prefill.startAt,endAt:prefill.endAt,origin:prefill.origin,destination:prefill.destination,segments:prefill.segments,currency:currencyDecision.originalCurrency,amountMinor};
  const extractionMappingReason={requestedType,inferredType:documentType,textSource:file.type==="application/pdf"?"pdf_text_layer":extracted.trim()?"client_ocr":"filename",managedAirportMatch:Boolean(prefill.origin||prefill.destination),currencyDecision:currencyDecision.reason,foreignTransactionFee:feeEvidence,cardEvidence};
- const now=new Date().toISOString();await db.insert(uploadedDocuments).values({id,ownerEmail:user.email,tripId,objectKey,contentHash,originalName:file.name,mimeType:file.type,sizeBytes:file.size,documentType,claimType,expenseDate,merchant:prefill.title,currency:currencyDecision.originalCurrency,amountMinor,detectedCurrency:currencyDecision.originalCurrency,detectedAmountMinor:amountMinor,status:"review",extractionConfidence:prefill.score,extractionWarnings:JSON.stringify(prefill.warnings),sourceExcerpt:prefill.sourceExcerpt,extractionRawText:extracted.trim().slice(0,50000),extractionCandidates:JSON.stringify(extractionCandidates),extractionMappingReason:JSON.stringify(extractionMappingReason),createdAt:now,updatedAt:now});
+ const now=new Date().toISOString(),writes=[db.insert(uploadedDocuments).values({id,ownerEmail:user.email,tripId,objectKey,contentHash,originalName:file.name,mimeType:file.type,sizeBytes:file.size,documentType,claimType,expenseDate,merchant:prefill.title,currency:currencyDecision.originalCurrency,amountMinor,detectedCurrency:currencyDecision.originalCurrency,detectedAmountMinor:amountMinor,status:"review",extractionConfidence:prefill.score,extractionWarnings:JSON.stringify(prefill.warnings),sourceExcerpt:prefill.sourceExcerpt,extractionRawText:extracted.trim().slice(0,50000),extractionCandidates:JSON.stringify(extractionCandidates),extractionMappingReason:JSON.stringify(extractionMappingReason),createdAt:now,updatedAt:now})];
+ if(currencyDecision.requiresTwd)writes.push(db.insert(masterDataExceptions).values({id:crypto.randomUUID(),tripId,ownerEmail:user.email,sourceType:"uploaded_document",sourceId:id,fieldName:"currency",rawValue:currencyDecision.originalCurrency,masterDataVersion:MASTER_DATA_VERSION,status:"open",createdAt:now}));await db.batch(writes);
  return NextResponse.json({id,originalName:file.name,documentType,status:"review",confidence:prefill.score,warnings:prefill.warnings,prefill:{...prefill,originalCurrency:currencyDecision.originalCurrency,reportingCurrency:currencyDecision.reportingCurrency,requiresTwd:currencyDecision.requiresTwd}});
 }
