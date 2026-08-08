@@ -219,6 +219,7 @@ body{font-size:15px;line-height:1.5}
 
 .expense-workbench-page{padding:20px max(32px,calc((100vw - var(--app-max))/2)) 72px}
 .expense-workbench-head{min-height:72px;margin-bottom:10px}
+.expense-workbench-head{display:flex;align-items:center;justify-content:space-between;gap:16px}.expense-drawer-trigger,.expense-drawer-head,.expense-drawer-backdrop{display:none}
 .expense-workbench-grid{grid-template-columns:minmax(0,1fr) var(--aside-width);gap:16px}
 .expense-tools{top:136px;gap:12px}.expense-tools>.panel{padding:16px;border-radius:var(--radius)}
 .expense-upload-tools h2{font-size:18px}.expense-upload-main{min-height:46px;font-size:14px}
@@ -230,7 +231,14 @@ body{font-size:15px;line-height:1.5}
  .topbar-inner{width:calc(100% - 40px)}.topbar nav{margin-left:0}.topbar nav button{min-width:104px}
  .my-trips-page,.itinerary-workspace-page .wizard-stage{width:calc(100% - 40px)}
  .my-trip-row{grid-template-columns:86px minmax(220px,1fr) 190px 230px;gap:12px}
- .agenda-workspace,.expense-workbench-grid{grid-template-columns:minmax(0,1fr) 260px}
+ .agenda-workspace{grid-template-columns:minmax(0,1fr) 260px}
+}
+
+@media(min-width:801px) and (max-width:1199px){
+ .expense-workbench-grid{display:block}.expense-workbench-main{width:100%}.expense-drawer-trigger{min-height:42px;padding:0 15px;display:inline-flex;align-items:center;border:1px solid #a9c2b6;border-radius:8px;background:white;color:var(--green);font-size:14px;font-weight:800}
+ .expense-tools{position:fixed;top:0;right:0;bottom:0;z-index:232;width:min(360px,92vw);padding:16px;overflow:auto;background:#f5f7f5;box-shadow:-18px 0 48px rgba(20,55,43,.2);transform:translateX(105%);transition:transform .2s ease}.expense-tools.drawer-open{transform:translateX(0)}
+ .expense-drawer-head{min-height:44px;display:flex;align-items:center;justify-content:space-between}.expense-drawer-head b{font-size:17px}.expense-drawer-head button{width:42px;height:42px;border:0;border-radius:50%;background:#e5eee9;color:var(--ink);font-size:25px}
+ .expense-drawer-backdrop{position:fixed;inset:0;z-index:231;display:block;border:0;background:rgba(18,42,34,.38)}
 }
 
 @media(max-width:800px){
@@ -245,9 +253,9 @@ body{font-size:15px;line-height:1.5}
  .agenda-workspace{display:flex;flex-direction:column}.agenda-workspace-main{order:1;width:100%}.agenda-side{order:2;position:static;width:100%;display:grid;grid-template-columns:1fr;margin-top:12px}
  .agenda-sheet-toolbar{position:static}.agenda-toolbar-actions{grid-template-columns:1fr 1fr}.agenda-sheet{height:auto}.agenda-sheet-tip{font-size:13px;line-height:1.45}
  .expense-workbench-page{padding:12px 12px calc(96px + env(safe-area-inset-bottom))}.expense-workbench-head{min-height:0;margin-bottom:8px}.expense-workbench-head p{display:none}
- .expense-workbench-grid{display:flex;gap:10px}.expense-tools{position:static;order:1}.expense-workbench-main{order:2}
- .expense-upload-tools{display:grid;grid-template-columns:minmax(0,1fr) 142px}.expense-upload-main{min-height:52px}
- .expense-side-documents{order:3}.expense-tools .missing-live{order:2}.mobile-expense-more{order:4}
+ .expense-workbench-grid{display:flex;flex-direction:column;gap:10px}.expense-tools{display:contents}.expense-drawer-trigger,.expense-drawer-head,.expense-drawer-backdrop{display:none!important}.expense-workbench-main{order:2}
+ .expense-upload-tools{order:1;display:grid;grid-template-columns:minmax(0,1fr) 142px}.expense-upload-main{min-height:52px}
+ .expense-tools .missing-live{order:3}.expense-side-documents{order:4}.mobile-expense-more{order:5}
  .mobile-nav{display:grid!important}
 }
 

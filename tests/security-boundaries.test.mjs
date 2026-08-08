@@ -161,3 +161,18 @@ test("card statements remain evidence and foreign fees are separate TWD expenses
  assert.match(confirm,/db\.delete\(personalExpenses\)/);
  assert.match(workbench,/批次核對與 CSV、Excel、PDF、ZIP 請回電腦版處理/);
 });
+
+test("expense workbench uses a desktop drawer and a mobile task order",async()=>{
+ const [workbench,styles]=await Promise.all([
+  read("app/ExpenseWizardLive.tsx"),
+  read("app/globals.css"),
+ ]);
+ assert.match(workbench,/expense-drawer-trigger/);
+ assert.match(workbench,/expense-drawer-backdrop/);
+ assert.match(styles,/@media\(min-width:801px\) and \(max-width:1199px\)/);
+ assert.match(styles,/\.expense-tools\.drawer-open\{transform:translateX\(0\)\}/);
+ assert.match(styles,/\.expense-upload-tools\{order:1/);
+ assert.match(styles,/\.expense-workbench-main\{order:2\}/);
+ assert.match(styles,/\.expense-tools \.missing-live\{order:3\}/);
+ assert.match(styles,/\.expense-side-documents\{order:4\}/);
+});

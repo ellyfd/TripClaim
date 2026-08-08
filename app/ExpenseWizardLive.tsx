@@ -7,7 +7,7 @@ import ExpenseSummary from "./ExpenseSummary";
 type Result={name:string;state:"uploading"|"scanning"|"review"|"done"|"duplicate"|"failed";confidence?:number;warnings?:string[]};
 
 export default function ExpenseWizardLive({onBack}:{onBack:()=>void}){
- const [tripId,setTripId]=useState(""),[results,setResults]=useState<Result[]>([]),[busy,setBusy]=useState(false),[uploadType,setUploadType]=useState("自動辨識"),[showCards,setShowCards]=useState(false),[pageState,setPageState]=useState<"loading"|"ready"|"unavailable">("loading"),[refreshKey,setRefreshKey]=useState(0);const ref=useRef<HTMLInputElement>(null);
+ const [tripId,setTripId]=useState(""),[results,setResults]=useState<Result[]>([]),[busy,setBusy]=useState(false),[uploadType,setUploadType]=useState("自動辨識"),[showCards,setShowCards]=useState(false),[showDesktopTools,setShowDesktopTools]=useState(false),[pageState,setPageState]=useState<"loading"|"ready"|"unavailable">("loading"),[refreshKey,setRefreshKey]=useState(0);const ref=useRef<HTMLInputElement>(null);
  useEffect(()=>{
   let cancelled=false;
   const start=async()=>{
@@ -26,12 +26,13 @@ export default function ExpenseWizardLive({onBack}:{onBack:()=>void}){
  const upload=async()=>{const files=Array.from(ref.current?.files??[]);if(!files.length)return;setBusy(true);setResults(files.map(f=>({name:f.name,state:"uploading"})));for(const file of files){setResults(v=>v.map(x=>x.name===file.name?{...x,state:"scanning"}:x));const body=new FormData();body.append("file",file);body.append("documentType",uploadType);if(tripId)body.append("tripId",tripId);try{if(file.type.startsWith("image/")&&!["image/heic","image/heif"].includes(file.type)){const {createWorker}=await import("tesseract.js");const worker=await createWorker("eng");const text=(await worker.recognize(file)).data.text;await worker.terminate();if(text)body.append("ocrText",text)}}catch{/* Keep the original file and let the user confirm missing fields. */}let result:Result={name:file.name,state:"failed"};for(let attempt=0;attempt<2&&result.state==="failed";attempt++){const r=await fetch("/api/documents",{method:"POST",body}).catch(()=>null);if(r?.ok){const data=await r.json();result={name:file.name,state:data.status==="ready"?"done":"review",confidence:data.confidence,warnings:data.warnings??[]}}else if(r?.status===409)result={name:file.name,state:"duplicate"}}setResults(v=>v.map(x=>x.name===file.name?result:x))}setBusy(false);setRefreshKey(v=>v+1);if(ref.current)ref.current.value=""};
  const exportClick=(index:number)=>document.querySelector<HTMLButtonElement>(`.expense-export-actions button:nth-child(${index})`)?.click();
  return <main className="expense-workbench-page" id="my-expense">
-  <header className="expense-workbench-head"><div><span>步驟 3・只顯示本人資料</span><h1>我的報帳</h1><p>中間整理費用流水帳；右側集中上傳、文件、缺件與匯出。</p></div></header>
+  <header className="expense-workbench-head"><div><span>步驟 3・只顯示本人資料</span><h1>我的報帳</h1><p>中間整理費用流水帳；右側集中上傳、文件、缺件與匯出。</p></div><button className="expense-drawer-trigger" onClick={()=>setShowDesktopTools(true)}>工具與文件</button></header>
   {pageState==="loading"&&<section className="expense-page-notice panel"><b>正在開啟我的報帳…</b><span>正在讀取目前出差與本人資料。</span></section>}
   {pageState==="unavailable"&&<section className="expense-page-notice panel"><b>尚未選擇出差</b><span>請先回到「我的出差」選擇一趟，再進入個人報帳。</span><button onClick={onBack}>返回共同行程</button></section>}
   {pageState==="ready"&&<>
   <div className="expense-workbench-grid"><section className="expense-workbench-main" id="expense-records"><ExpenseSummary tripId={tripId} refreshKey={refreshKey}/></section>
-   <aside className="expense-tools">
+   <aside className={`expense-tools ${showDesktopTools?"drawer-open":""}`}>
+    <div className="expense-drawer-head"><b>報帳工具</b><button onClick={()=>setShowDesktopTools(false)} aria-label="關閉工具">×</button></div>
     <section className="panel expense-upload-tools" id="expense-upload"><span>快速收件</span><h2>拍照或上傳</h2><button className="expense-upload-main" disabled={busy} onClick={()=>choose("自動辨識")}>{busy?"辨識中…":"＋ 上傳文件"}</button><small className="expense-upload-hint">收據、刷卡單、帳單、機票與住宿都能自動判斷。</small><div className="expense-type-buttons">{["收據／發票","刷卡單","信用卡帳單","機票","住宿","交通票券"].map(type=><button key={type} disabled={busy} onClick={()=>choose(type)}>{type}</button>)}</div><input ref={ref} type="file" multiple accept="image/*,.heic,.heif,.pdf" hidden onChange={upload}/>{results.length>0&&<div className="expense-side-results">{results.slice(-3).map((x,i)=><p className={x.state} key={`${x.name}-${i}`}><b>{x.state==="done"?"✓":x.state==="review"?"?":x.state==="duplicate"?"↺":x.state==="failed"?"!":"…"}</b><span>{x.name}<small>{x.state==="uploading"?"正在安全上傳":x.state==="scanning"?"正在讀取文字與金額":x.state==="review"?`已讀取・待你確認${typeof x.confidence==="number"?`・${x.confidence}%`:""}`:x.state==="done"?"已確認":x.state==="duplicate"?"曾經上傳過":"上傳失敗，請重試"}</small>{x.warnings?.length?<em>{x.warnings.slice(0,2).join("、")}</em>:null}</span></p>)}</div>}</section>
     <div className="expense-side-documents"><DocumentInbox tripId={tripId} refreshKey={refreshKey}/></div>
     <MissingRequirements tripId={tripId} refreshKey={refreshKey}/>
@@ -39,6 +40,7 @@ export default function ExpenseWizardLive({onBack}:{onBack:()=>void}){
     <details className="panel mobile-expense-more"><summary>信用卡附件</summary><button onClick={()=>setShowCards(true)}>上傳帳單／登記卡片</button><small>批次核對與 CSV、Excel、PDF、ZIP 請回電腦版處理。</small></details>
    </aside>
   </div>
+  {showDesktopTools&&<button className="expense-drawer-backdrop" aria-label="關閉工具" onClick={()=>setShowDesktopTools(false)}/>}
   {showCards&&<div className="expense-tools-overlay" onClick={()=>setShowCards(false)}><div onClick={e=>e.stopPropagation()}><button className="expense-tools-close" onClick={()=>setShowCards(false)}>×</button><CardCenter tripId={tripId}/></div></div>}
   </>}
  </main>;
