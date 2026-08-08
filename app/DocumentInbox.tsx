@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { zipSync } from "fflate";
+import {DEFAULT_CLAIM_TYPES,DEFAULT_CURRENCIES,DEFAULT_DESTINATIONS,normalizeCurrency} from "./managed-config";
 
-type Doc={id:string;originalName:string;mimeType:string;sizeBytes:number;documentType:string;claimType:string|null;expenseDate:string|null;merchant:string|null;currency:string|null;amountMinor:number|null;paymentMethod:string|null;cardLast4:string|null;suggestedName:string|null;status:string;extractionConfidence:number|null;extractionWarnings:string|null;sourceExcerpt:string|null;createdAt:string};
-const claimTypes=["機票(自行刷卡)","住宿","車資","餐飲","電信網路費","預支歸還"];
+type Doc={id:string;originalName:string;mimeType:string;sizeBytes:number;documentType:string;claimType:string|null;expenseDate:string|null;merchant:string|null;currency:string|null;amountMinor:number|null;detectedCurrency:string|null;detectedAmountMinor:number|null;paymentMethod:string|null;cardLast4:string|null;suggestedName:string|null;status:string;extractionConfidence:number|null;extractionWarnings:string|null;sourceExcerpt:string|null;createdAt:string};
+const managedCities=Object.entries(DEFAULT_DESTINATIONS).flatMap(([country,cities])=>cities.map(city=>`${country}｜${city}`));
 const ext=(name:string)=>name.includes(".")?name.slice(name.lastIndexOf(".")):"";
 const safe=(value:string)=>value.trim().replace(/[^\p{L}\p{N}._-]+/gu,"-");
 const warnings=(value:string|null)=>{try{return value?JSON.parse(value) as string[]:[]}catch{return[]}};
@@ -12,7 +13,7 @@ const warnings=(value:string|null)=>{try{return value?JSON.parse(value) as strin
 export default function DocumentInbox({tripId,refreshKey=0}:{tripId?:string;refreshKey?:number}){
  const [docs,setDocs]=useState<Doc[]>([]); const [open,setOpen]=useState<string|null>(null); const [loading,setLoading]=useState(true); const [message,setMessage]=useState("");const [query,setQuery]=useState("");const [bundling,setBundling]=useState(false);
  const load=()=>fetch(`/api/documents${tripId?`?tripId=${encodeURIComponent(tripId)}`:""}`).then(x=>x.ok?x.json():null).then(x=>{if(x)setDocs(x.documents??[]);setLoading(false)}).catch(()=>setLoading(false)); useEffect(()=>{load()},[tripId,refreshKey]);useEffect(()=>{const reload=()=>load();window.addEventListener("tripclaim:data-changed",reload);return()=>window.removeEventListener("tripclaim:data-changed",reload)},[tripId]);
- const save=async(d:Doc,form:HTMLFormElement)=>{const fd=new FormData(form);const date=String(fd.get("date")||"");const merchant=String(fd.get("merchant")||"");const claimType=String(fd.get("claimType")||"餐飲");const currency=String(fd.get("currency")||"").toUpperCase();const amount=Number(fd.get("amount")||0);const city=String(fd.get("city")||"未分類");const paymentMethod=String(fd.get("paymentMethod")||"cash");const cardLast4=String(fd.get("cardLast4")||"");const suggested=`EXP-${date.replaceAll("-","")||"待確認"}_${safe(city)}_${safe(claimType)}_${safe(merchant||"待確認")}_${currency||"幣別"}${amount||0}_${safe(d.documentType)}${ext(d.originalName)}`;const response=await fetch(`/api/documents/${d.id}`,{method:"PATCH",headers:{"content-type":"application/json"},body:JSON.stringify({claimType,expenseDate:date,merchant,currency,amountMinor:Math.round(amount*100),paymentMethod,cardLast4,suggestedName:suggested,status:"ready"})});if(response.ok){setMessage("已按旅費報支項目確認、重新命名並加入我的報支");setOpen(null);load();setTimeout(()=>setMessage(""),2000)}};
+ const save=async(d:Doc,form:HTMLFormElement)=>{const fd=new FormData(form);const date=String(fd.get("date")||"");const merchant=String(fd.get("merchant")||"");const claimType=String(fd.get("claimType")||"餐飲");const originalCurrency=String(d.detectedCurrency??d.currency??"TWD").toUpperCase();const originalAmount=Number(d.detectedAmountMinor??d.amountMinor??0)/100;const reportingCurrency=normalizeCurrency(String(fd.get("reportingCurrency")||"TWD"));const reportingAmount=Number(fd.get("reportingAmount")||0);const city=String(fd.get("city")||"未分類");const paymentMethod=String(fd.get("paymentMethod")||"cash");const cardLast4=String(fd.get("cardLast4")||"");const suggested=`EXP-${date.replaceAll("-","")||"待確認"}_${safe(city)}_${safe(claimType)}_${safe(merchant||"待確認")}_${reportingCurrency}${reportingAmount||0}_${safe(d.documentType)}${ext(d.originalName)}`;const response=await fetch(`/api/documents/${d.id}`,{method:"PATCH",headers:{"content-type":"application/json"},body:JSON.stringify({claimType,expenseDate:date,merchant,originalCurrency,originalAmountMinor:Math.round(originalAmount*100),reportingCurrency,reportingAmountMinor:Math.round(reportingAmount*100),paymentMethod,cardLast4,suggestedName:suggested,status:"ready"})});if(response.ok){setMessage("已保留原始金額，並按公司申報幣別加入我的報支");setOpen(null);load();setTimeout(()=>setMessage(""),2000)}else{const result=await response.json().catch(()=>null);setMessage(result?.message||"請確認申報幣別與金額")}};
  const remove=async(d:Doc)=>{if(!window.confirm(`確定刪除「${d.suggestedName||d.originalName}」？原始檔、連結費用及相關機票／住宿行程會一起刪除，無法復原。`))return;const response=await fetch(`/api/documents/${d.id}`,{method:"DELETE"});if(response.ok){setMessage("文件、費用與相關行程已同步刪除");setOpen(null);load();window.dispatchEvent(new Event("tripclaim:data-changed"));setTimeout(()=>setMessage(""),2200)}else{setMessage("刪除失敗，請重新整理後再試");setTimeout(()=>setMessage(""),2200)}};
  const downloadAll=async()=>{if(!docs.length)return;setBundling(true);setMessage("正在打包全部標準檔名附件…");try{const files:Record<string,Uint8Array>={};for(let i=0;i<docs.length;i++){const d=docs[i],r=await fetch(`/api/documents/${d.id}?download=1`);if(!r.ok)throw new Error(d.originalName);const base=d.suggestedName||d.originalName,name=files[base]?`${String(i+1).padStart(3,"0")}_${base}`:base;files[name]=new Uint8Array(await r.arrayBuffer())}const zipped=zipSync(files,{level:6}),buffer=zipped.buffer.slice(zipped.byteOffset,zipped.byteOffset+zipped.byteLength) as ArrayBuffer,url=URL.createObjectURL(new Blob([buffer],{type:"application/zip"})),a=document.createElement("a");a.href=url;a.download=`我的出差附件_${new Date().toISOString().slice(0,10)}.zip`;a.click();URL.revokeObjectURL(url);setMessage(`已打包 ${docs.length} 份本人附件`)}catch{setMessage("附件打包失敗，請重試或個別下載")}finally{setBundling(false);setTimeout(()=>setMessage(""),2600)}};
  if(loading)return <section className="document-inbox panel">
@@ -44,16 +45,18 @@ export default function DocumentInbox({tripId,refreshKey=0}:{tripId?:string;refr
 <button type="button" className="document-delete" onClick={()=>remove(d)}>刪除</button>{open===d.id&&<form className="document-editor" onSubmit={e=>{e.preventDefault();save(d,e.currentTarget)}}>
 <label>日期<input name="date" type="date" defaultValue={d.expenseDate??""}/>
 </label>
-<label>國家／城市<input name="city" placeholder="例如 FR-Paris"/>
+<label>國家／城市<select name="city" defaultValue="" required><option value="" disabled>選擇公司主檔中的國家／城市</option>{managedCities.map(x=><option key={x}>{x}</option>)}</select>
 </label>
-<label>請款類型<select name="claimType" defaultValue={d.claimType??(d.documentType.includes("住宿")?"住宿":d.documentType.includes("機票")?"機票(自行刷卡)":d.documentType.includes("交通")?"車資":"餐飲")}>{claimTypes.map(x=>
+<label>報支項目<select name="claimType" defaultValue={d.claimType??(d.documentType.includes("住宿")?"住宿":d.documentType.includes("機票")?"機票(自行刷卡)":d.documentType.includes("交通")?"車資":"餐飲")}>{DEFAULT_CLAIM_TYPES.map(x=>
 <option key={x}>{x}</option>)}</select>
 </label>
 <label>店家<input name="merchant" defaultValue={d.merchant??""} placeholder="例如 Starbucks"/>
 </label>
-<label>幣別<input name="currency" defaultValue={d.currency??""} placeholder="例如 EUR"/>
+<div className="document-original-money"><b>原始單據金額</b><span>{d.detectedCurrency??d.currency??"待確認"} {((d.detectedAmountMinor??d.amountMinor??0)/100).toLocaleString()}</span><small>原始辨識資料會保留，不會被申報金額覆蓋。</small></div>
+<label>申報幣別<select name="reportingCurrency" defaultValue={normalizeCurrency(d.detectedCurrency??d.currency??"TWD")}>{DEFAULT_CURRENCIES.map(([code,name])=><option key={code} value={code}>{code} {name}</option>)}</select>
 </label>
-<label>金額<input name="amount" type="number" step="0.01" defaultValue={d.amountMinor?d.amountMinor/100:""}/>
+{(d.detectedCurrency??d.currency)&&!DEFAULT_CURRENCIES.some(([code])=>code===(d.detectedCurrency??d.currency))&&<p className="currency-warning">原單據為 {d.detectedCurrency??d.currency}；公司系統僅能以 TWD 報支，請填入實際 TWD 請款金額。</p>}
+<label>申報金額<input name="reportingAmount" type="number" min="0" step="0.01" required defaultValue={DEFAULT_CURRENCIES.some(([code])=>code===(d.detectedCurrency??d.currency))?(d.detectedAmountMinor??d.amountMinor??0)/100:""}/>
 </label>
 <label>付款方式<select name="paymentMethod" defaultValue={d.paymentMethod??"cash"}><option value="cash">現金</option><option value="credit_card">個人信用卡</option><option value="other">其他</option></select>
 </label>
