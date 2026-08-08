@@ -1,6 +1,3 @@
-"use client";
-import {useState} from "react";
-
 export const DEFAULT_CURRENCIES=[
  ["TWD","台幣"],["USD","美金"],["CNY","人民幣"],["JPY","日元"],["IDR","印尼盾"],["KHR","柬幣"],
  ["GBP","英鎊"],["HKD","港幣"],["PHP","菲披索"],["VND","越南盾"],["EUR","歐元"],["KRW","韓元"],
@@ -15,9 +12,20 @@ export const DEFAULT_DESTINATIONS:Record<string,string[]>={
 };
 export type ManagedConfig={claimTypes:string[];countries:string[]};
 const defaults:ManagedConfig={claimTypes:DEFAULT_CLAIM_TYPES,countries:DEFAULT_COUNTRIES};
-export const normalizeCurrency=(value:string)=>DEFAULT_CURRENCIES.some(([code])=>code===value.toUpperCase())?value.toUpperCase():"TWD";
-export function useManagedConfig(){
- const [config,setConfig]=useState<ManagedConfig>(()=>{try{const saved=typeof window!=="undefined"?localStorage.getItem("tripclaim-managed-config"):null;return saved?{...defaults,...JSON.parse(saved)}:defaults}catch{return defaults}});
- const save=(next:ManagedConfig)=>{setConfig(next);try{localStorage.setItem("tripclaim-managed-config",JSON.stringify(next));window.dispatchEvent(new Event("tripclaim-config"))}catch{}};
- return {config,save};
-}
+export const MANAGED_CURRENCY_CODES=new Set(DEFAULT_CURRENCIES.map(([code])=>code));
+export const MANAGED_CLAIM_TYPES=new Set(DEFAULT_CLAIM_TYPES);
+export const normalizeCurrency=(value:string)=>MANAGED_CURRENCY_CODES.has(value.toUpperCase())?value.toUpperCase():"TWD";
+export type CurrencyDecision={originalCurrency:string;reportingCurrency:string;requiresTwd:boolean;reason:string|null};
+export const decideReportingCurrency=(value:string|undefined|null):CurrencyDecision=>{
+ const original=(value||"TWD").trim().toUpperCase()||"TWD";
+ const allowed=MANAGED_CURRENCY_CODES.has(original);
+ return {originalCurrency:original,reportingCurrency:allowed?original:"TWD",requiresTwd:!allowed,reason:allowed?null:`${original} 不在公司可申報幣別，只能以 TWD 報支`};
+};
+export const isManagedClaimType=(value:string|undefined|null):value is string=>Boolean(value&&MANAGED_CLAIM_TYPES.has(value));
+export const isManagedDestination=(countryCode:string|undefined,countryName:string|undefined,cityName:string|undefined)=>{
+ if(!countryCode||!countryName||!cityName)return false;
+ const country=DEFAULT_COUNTRIES.find(x=>x.endsWith(` ${countryCode.toUpperCase()}`));
+ return Boolean(country&&country.startsWith(countryName)&&DEFAULT_DESTINATIONS[country]?.includes(cityName));
+};
+// 公司固定主檔由程式版本／公司系統提供；相容介面刻意不提供 save。
+export function useManagedConfig(){return {config:defaults} as const}
