@@ -100,3 +100,36 @@ test("manual flight registration starts with outbound and return segments",async
  assert.match(source,/來回票只建立一筆本人報支/);
  assert.match(source,/新增轉機航段/);
 });
+
+test("unknown currencies preserve the original and require TWD reporting",async()=>{
+ const [config,documents,expense,migration]=await Promise.all([
+  read("app/managed-config.ts"),
+  read("app/api/documents/[id]/route.ts"),
+  read("app/api/expenses/[id]/route.ts"),
+  read("drizzle/0014_dual_currency.sql"),
+ ]);
+ assert.match(config,/requiresTwd:!allowed/);
+ assert.match(config,/不在公司可申報幣別，只能以 TWD 報支/);
+ for(const source of [documents,expense]){
+  assert.match(source,/originalCurrency/);
+  assert.match(source,/originalAmountMinor/);
+  assert.match(source,/reportingCurrency/);
+  assert.match(source,/reportingAmountMinor/);
+  assert.match(source,/twd_reporting_(?:amount_)?required/);
+ }
+ assert.match(migration,/original_currency/);
+ assert.match(migration,/reporting_currency/);
+});
+
+test("company claim and currency masters remain fixed",async()=>{
+ const [config,documents,expense]=await Promise.all([
+  read("app/managed-config.ts"),
+  read("app/api/documents/[id]/route.ts"),
+  read("app/api/expenses/[id]/route.ts"),
+ ]);
+ assert.match(config,/刻意不提供 save/);
+ assert.match(documents,/isManagedClaimType/);
+ assert.match(documents,/MANAGED_CURRENCY_CODES/);
+ assert.match(expense,/isManagedClaimType/);
+ assert.match(expense,/MANAGED_CURRENCY_CODES/);
+});
