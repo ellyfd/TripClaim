@@ -112,7 +112,7 @@
 
 ### Sprint 8：遷移、壓力測試與分階段發布（P1）
 
-- [ ] 舊資料 mapping 與 migration exceptions。
+- [x] 舊資料 mapping 與 migration exceptions。
 - [ ] 新舊加總雙讀比較。
 - [ ] 31 天行程、多成員、1,000 筆費用與大量附件測試。
 - [ ] iPhone Safari、Android Chrome 與 PWA standalone 測試。
