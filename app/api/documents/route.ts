@@ -27,6 +27,10 @@ function inferDocumentType(text:string,fileName:string,requested:string){
  if(/uber|taxi|metro|train|rail|捷運|計程車|車資|交通/.test(source))return "交通票券";
  return "收據／發票";
 }
+function isForeignTransactionFee(text:string,fileName:string){
+ const source=`${text} ${fileName}`.toLowerCase();
+ return /foreign\s*(?:transaction|exchange)\s*fee|overseas\s*fee|國外交易手續費|國外刷卡手續費/.test(source);
+}
 function parseDocument(text:string,fileName:string,kind:string){
  const source=normalizeManagedAirportText(`${text}\n${fileName}`.replace(/\s+/g," "));
  const dateTimes=[...source.matchAll(/(20\d{2})[\/.-](\d{1,2})[\/.-](\d{1,2})\D{0,18}([0-2]?\d)[:.](\d{2})/g)].map(x=>`${x[1]}-${pad(x[2])}-${pad(x[3])}T${pad(x[4])}:${x[5]}`);
@@ -44,30 +48,15 @@ function parseDocument(text:string,fileName:string,kind:string){
   const duration=details.match(/(?:Duration|飛行時間)\s*[:：]?\s*(\d{1,2}:\d{2})/i)?.[1]??null;
   return [{title:`${match[3]}${match[4]} ${match[1]} → ${match[2]}`,startAt:`${dates[0]}T${match[5].replace(".",":")}`,endAt:`${dates[1]}T${match[6].replace(".",":")}`,origin:match[1],destination:match[2],duration}];
  });
- // 第二種航段解析：以「航班號＋出發時間＋出發日＋抵達時間＋抵達日」為錨，
- // 起訖機場取錨點前文最後兩個合法代碼。涵蓋長榮電子機票這類
- // 「TPE 航站/Terminal: 2 CDG 航站/Terminal: 1 BR87 23:30 15Jun2026 08:05 16Jun2026」格式。
- const MONTHS="(?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)";
- const anchored=segments.length?[]:[...source.matchAll(new RegExp(String.raw`\b([A-Z]{2})\s?(\d{2,4})\s+([0-2]?\d[:.]\d{2})\s+(\d{1,2}${MONTHS}\d{2,4})\s+([0-2]?\d[:.]\d{2})\s+(\d{1,2}${MONTHS}\d{2,4})\b`,"gi"))].flatMap(match=>{
-  const before=source.slice(Math.max(0,(match.index??0)-220),match.index).toUpperCase();
-  const codes=[...before.matchAll(/\b([A-Z]{3})\b/g)].map(x=>x[1]).filter(code=>MANAGED_AIRPORT_CODES.has(code));
-  const origin=codes.at(-2),destination=codes.at(-1);
-  if(!origin||!destination||origin===destination)return [];
-  const startDate=compactDate(match[4]),endDate=compactDate(match[6]);
-  if(!startDate||!endDate)return [];
-  const duration=source.slice((match.index??0)+match[0].length,(match.index??0)+match[0].length+320).match(/(?:Duration|飛行時間)\s*[\/:：]?\s*(\d{1,2}:\d{2})/i)?.[1]??null;
-  return [{title:`${match[1].toUpperCase()}${match[2]} ${origin} → ${destination}`,startAt:`${startDate}T${match[3].replace(".",":")}`,endAt:`${endDate}T${match[5].replace(".",":")}`,origin,destination,duration}];
- });
- const allSegments=[...segments,...anchored];
  const hotel=source.match(/(?:HOTEL|住宿|PROPERTY|飯店)\s*[:：-]?\s*([A-Z0-9][A-Z0-9 '&.,-]{3,55})/i);
- const primarySegment=allSegments[0];
+ const primarySegment=segments[0];
  const title=kind==="flight"?(primarySegment?.title||(flight?`${flight[1]}${flight[2]}${airports.length>=2?` ${airports[0]} → ${airports[1]}`:""}`:"機票・請確認航班名稱")):(hotel?.[1]?.trim()||fileName.replace(/\.[^.]+$/,""));
  const confidence={title:Boolean(primarySegment||flight||hotel),date:Boolean(primarySegment||times.length>=1),times:Boolean(primarySegment||times.length>=2),route:Boolean(primarySegment||airports.length>=2),amount:Boolean(money),textDetected:text.trim().length>20};
  const isTravel=kind==="flight"||kind==="stay"||kind==="機票"||kind==="住宿";
  const checks=isTravel?[confidence.title,confidence.times,confidence.amount,kind==="flight"||kind==="機票"?confidence.route:true]:[confidence.textDetected,confidence.date,confidence.amount,Boolean(money?.[1])];
  const score=Math.round(checks.filter(Boolean).length/checks.length*100);
  const warnings=[!confidence.textDetected?"圖片文字尚未成功讀取":null,!confidence.date?"找不到消費日期":null,!confidence.amount?"找不到金額":null,!money?.[1]?"找不到幣別":null,isTravel&&!confidence.title?"名稱辨識信心較低":null,(kind==="flight"||kind==="機票")&&!confidence.route?"找不到完整起訖地":null].filter(Boolean) as string[];
- return {title,startAt:primarySegment?.startAt??times[0]??null,endAt:primarySegment?.endAt??times[1]??null,origin:primarySegment?.origin??airports[0]??null,destination:primarySegment?.destination??airports[1]??null,segments:allSegments,currency:money?.[1]?.toUpperCase()==="NTD"?"TWD":money?.[1]?.toUpperCase()??null,amount:money?money[2].replaceAll(",",""):null,confidence,textDetected:confidence.textDetected,score,warnings,sourceExcerpt:text.trim().replace(/\s+/g," ").slice(0,280)};
+ return {title,startAt:primarySegment?.startAt??times[0]??null,endAt:primarySegment?.endAt??times[1]??null,origin:primarySegment?.origin??airports[0]??null,destination:primarySegment?.destination??airports[1]??null,segments,currency:money?.[1]?.toUpperCase()==="NTD"?"TWD":money?.[1]?.toUpperCase()??null,amount:money?money[2].replaceAll(",",""):null,confidence,textDetected:confidence.textDetected,score,warnings,sourceExcerpt:text.trim().replace(/\s+/g," ").slice(0,280)};
 }
 
 export async function GET(request:NextRequest){
@@ -84,9 +73,10 @@ export async function POST(request:NextRequest){
  if(!(file instanceof File))return NextResponse.json({error:"file_required"},{status:400});if(!allowed.has(file.type))return NextResponse.json({error:"unsupported_file_type"},{status:415});if(file.size>15*1024*1024)return NextResponse.json({error:"file_too_large"},{status:413});
  const bytes=await file.arrayBuffer(),digest=await crypto.subtle.digest("SHA-256",bytes),contentHash=Array.from(new Uint8Array(digest)).map(x=>x.toString(16).padStart(2,"0")).join(""),db=await getDb(),[duplicate]=await db.select({id:uploadedDocuments.id,originalName:uploadedDocuments.originalName}).from(uploadedDocuments).where(and(eq(uploadedDocuments.ownerEmail,user.email),eq(uploadedDocuments.tripId,tripId),eq(uploadedDocuments.contentHash,contentHash))).limit(1);
  let extracted=String(data.get("ocrText")??"");if(file.type==="application/pdf"){try{const pdf=await getDocumentProxy(new Uint8Array(bytes));extracted=String((await extractText(pdf,{mergePages:true})).text??"")}catch{}}
- const documentType=inferDocumentType(extracted,file.name,requestedType),prefill=parseDocument(extracted,file.name,documentType),cardEvidence=documentType.includes("信用卡")||documentType.includes("刷卡"),claimType=documentType.includes("機票")?"機票(自行刷卡)":documentType.includes("住宿")?"住宿":documentType.includes("交通")?"車資":cardEvidence?"國外交易手續費":"餐飲",currencyDecision=decideReportingCurrency(prefill.currency);
+ const documentType=inferDocumentType(extracted,file.name,requestedType),prefill=parseDocument(extracted,file.name,documentType),cardEvidence=documentType.includes("信用卡")||documentType.includes("刷卡"),feeEvidence=isForeignTransactionFee(extracted,file.name),claimType=documentType.includes("機票")?"機票(自行刷卡)":documentType.includes("住宿")?"住宿":documentType.includes("交通")?"車資":feeEvidence?"國外交易手續費":cardEvidence?null:"餐飲",currencyDecision=decideReportingCurrency(prefill.currency);
  if(currencyDecision.requiresTwd)prefill.warnings.push(`偵測到 ${currencyDecision.originalCurrency}；${currencyDecision.reason}`);
- if(cardEvidence&&currencyDecision.originalCurrency!=="TWD")prefill.warnings.push(`信用卡帳單／刷卡資料以 TWD 申報，原始 ${currencyDecision.originalCurrency} 金額仍會保留`);
+ if(cardEvidence&&!feeEvidence)prefill.warnings.push("此文件是付款證明，不會另建一筆消費；請配對既有費用");
+ if(feeEvidence&&currencyDecision.originalCurrency!=="TWD")prefill.warnings.push("國外交易手續費只能以 TWD 報支，請填信用卡帳單上的台幣金額");
  if(duplicate)return NextResponse.json({error:"duplicate_document",existing:duplicate,documentType,confidence:prefill.score,warnings:prefill.warnings,prefill},{status:409});
  const id=crypto.randomUUID(),safeName=file.name.replace(/[^\p{L}\p{N}._-]+/gu,"-").slice(-120),objectKey=`users/${encodeURIComponent(user.email)}/${tripId}/${id}-${safeName}`,expenseDate=prefill.startAt?.slice(0,10)??null,amountMinor=prefill.amount?Math.round(Number(prefill.amount)*100):null;
  const {env}=await import("cloudflare:workers");await env.BUCKET.put(objectKey,bytes,{httpMetadata:{contentType:file.type},customMetadata:{owner:user.email,tripId,documentType}});

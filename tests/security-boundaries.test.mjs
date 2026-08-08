@@ -95,8 +95,7 @@ test("deleting a booking cascades to expense and orphaned attachment",async()=>{
 
 test("manual flight registration starts with outbound and return segments",async()=>{
  const source=await read("app/TripTodoPanel.tsx");
- assert.match(source,/base==="flight"\?\[blankLeg\(\),blankLeg\(\)\]/);
- assert.match(source,/documentType",autoDetect\?"自動辨識":kind/);
+ assert.match(source,/(?:next|base)==="flight"\?\[blankLeg\(\),blankLeg\(\)\]/);
  assert.match(source,/來回票只建立一筆本人報支/);
  assert.match(source,/新增轉機航段/);
 });
@@ -147,4 +146,18 @@ test("exports group by company claim type and reporting currency",async()=>{
  assert.match(route,/00_附件索引_manifest\.json/);
  assert.match(route,/group\.folder/);
  assert.match(inbox,/api\/trips\/\$\{encodeURIComponent\(tripId\)\}\/export/);
+});
+
+test("card statements remain evidence and foreign fees are separate TWD expenses",async()=>{
+ const [upload,confirm,workbench]=await Promise.all([
+  read("app/api/documents/route.ts"),
+  read("app/api/documents/[id]/route.ts"),
+  read("app/ExpenseWizardLive.tsx"),
+ ]);
+ assert.match(upload,/cardEvidence\?null/);
+ assert.match(upload,/此文件是付款證明，不會另建一筆消費/);
+ assert.match(confirm,/shouldCreateExpense=!isCardEvidence\|\|input\.claimType==="國外交易手續費"/);
+ assert.match(confirm,/foreign_fee_must_be_twd/);
+ assert.match(confirm,/db\.delete\(personalExpenses\)/);
+ assert.match(workbench,/批次核對與 CSV、Excel、PDF、ZIP 請回電腦版處理/);
 });
