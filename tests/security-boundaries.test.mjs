@@ -216,3 +216,17 @@ test("PWA uploads persist before network delivery and retry after reconnect",asy
  assert.match(register,/window\.addEventListener\("online", flush\)/);
  assert.match(register,/tripclaim-flush-uploads/);
 });
+
+test("client image processing reuses OCR and prepares images before upload",async()=>{
+ const [processing,expense,travel]=await Promise.all([read("app/client-document-processing.ts"),read("app/ExpenseWizardLive.tsx"),read("app/TripTodoPanel.tsx")]);
+ assert.match(processing,/let workerPromise/);
+ assert.doesNotMatch(processing,/worker\.terminate/);
+ assert.match(processing,/imageOrientation:"from-image"/);
+ assert.match(processing,/limit=2200/);
+ assert.match(processing,/圖片可能模糊/);
+ for(const source of [expense,travel]){
+  assert.match(source,/prepareImageForUpload/);
+  assert.match(source,/recognizeDocumentText/);
+  assert.doesNotMatch(source,/createWorker\("eng"\)/);
+ }
+});

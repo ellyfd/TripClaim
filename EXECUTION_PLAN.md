@@ -84,8 +84,8 @@
 - [x] 拍照後先存 IndexedDB，一秒內顯示「已保存，辨識中」。
 - [x] 建立 client job ID 與 retry queue；伺服器沿用文件 hash 防止重送形成重複費用。
 - [x] 離線可繼續拍照，背景同步或恢復連線後續傳。
-- [ ] 圖片方向校正、壓縮、清晰度檢查後再 OCR。
-- [ ] PDF 優先讀文字層；OCR worker 重複使用。
+- [x] 圖片方向校正、長邊縮至 2200px、壓縮與清晰度檢查後再 OCR；模糊時要求人工確認。
+- [ ] PDF 優先讀文字層；圖片 OCR worker 已改為跨檔案重複使用，不再每張重新初始化。
 - [ ] OCR 保存 raw text、candidate、confidence、mapping reason 與 confirmed value。
 
 完成定義：手機兩次點擊內完成上傳；一秒內獲得保存回饋；離線重啟後可續傳。
