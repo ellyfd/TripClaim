@@ -174,6 +174,15 @@ test("formal records store master codes and reject unmapped labels",async()=>{
  assert.match(migration,/master_data_exceptions/);
 });
 
+test("legacy data is backfilled only when deterministic",async()=>{
+ const migration=await read("drizzle/0018_backfill_master_codes.sql");
+ assert.match(migration,/WHEN '機票\(自行刷卡\)' THEN 'EXP-01'/);
+ assert.match(migration,/master_data_exceptions/);
+ assert.match(migration,/category_code` IS NULL/);
+ assert.match(migration,/city_code` IS NULL/);
+ assert.doesNotMatch(migration,/ELSE 'EXP-/);
+});
+
 test("exports group by company claim type and reporting currency",async()=>{
  const [grouping,route,inbox]=await Promise.all([
   read("app/expense-export.ts"),
