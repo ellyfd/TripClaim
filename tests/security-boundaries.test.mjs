@@ -95,7 +95,7 @@ test("deleting a booking cascades to expense and orphaned attachment",async()=>{
 
 test("manual flight registration starts with outbound and return segments",async()=>{
  const source=await read("app/TripTodoPanel.tsx");
- assert.match(source,/next==="flight"\?\[blankLeg\(\),blankLeg\(\)\]/);
+ assert.match(source,/(?:next|base)==="flight"\?\[blankLeg\(\),blankLeg\(\)\]/);
  assert.match(source,/來回票只建立一筆本人報支/);
  assert.match(source,/新增轉機航段/);
 });
