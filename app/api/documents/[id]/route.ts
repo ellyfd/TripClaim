@@ -4,7 +4,7 @@ import { getChatGPTUser } from "../../../chatgpt-auth";
 import { getDb } from "../../../../db";
 import { recordAudit, requireTripMember } from "../../../../db/access";
 import { agendaItems, personalExpenses, travelBookings, uploadedDocuments } from "../../../../db/schema";
-import {decideReportingCurrency,isManagedClaimType,MANAGED_CURRENCY_CODES,MASTER_DATA_VERSION} from "../../../managed-config";
+import {decideReportingCurrency,isManagedClaimType,managedClaimTypeCode,MANAGED_CURRENCY_CODES,MASTER_DATA_VERSION} from "../../../managed-config";
 
 export async function GET(request:NextRequest,{params}:{params:Promise<{id:string}>}){
  const user=await getChatGPTUser(); if(!user)return NextResponse.json({error:"authentication_required"},{status:401});
@@ -33,7 +33,7 @@ export async function PATCH(request:NextRequest,{params}:{params:Promise<{id:str
  if(!result.length)return NextResponse.json({error:"not_found"},{status:404});
  const shouldCreateExpense=!isCardEvidence||input.claimType==="國外交易手續費";
  if(input.status==="ready"&&shouldCreateExpense&&input.expenseDate&&input.merchant&&typeof reportingAmountMinor==="number"){
-  const [existing]=await db.select({id:personalExpenses.id}).from(personalExpenses).where(and(eq(personalExpenses.sourceDocumentId,id),eq(personalExpenses.ownerEmail,user.email))).limit(1);const values={tripId:result[0].tripId,ownerEmail:user.email,sourceDocumentId:id,category:input.claimType,merchant:input.merchant,expenseDate:input.expenseDate,amountMinor:reportingAmountMinor,currency:reportingCurrency,originalAmountMinor,originalCurrency,reportingAmountMinor,reportingCurrency,currencyDecisionReason:decision.reason,claimedTwdMinor:reportingCurrency==="TWD"?reportingAmountMinor:null,cardLast4:input.paymentMethod==="credit_card"?input.cardLast4:null,status:"ready" as const,masterDataVersion:MASTER_DATA_VERSION,updatedAt:now};if(existing)await db.update(personalExpenses).set(values).where(eq(personalExpenses.id,existing.id));else await db.insert(personalExpenses).values({id:crypto.randomUUID(),...values,createdAt:now});
+  const [existing]=await db.select({id:personalExpenses.id}).from(personalExpenses).where(and(eq(personalExpenses.sourceDocumentId,id),eq(personalExpenses.ownerEmail,user.email))).limit(1);const values={tripId:result[0].tripId,ownerEmail:user.email,sourceDocumentId:id,category:input.claimType,categoryCode:managedClaimTypeCode(input.claimType),merchant:input.merchant,expenseDate:input.expenseDate,amountMinor:reportingAmountMinor,currency:reportingCurrency,originalAmountMinor,originalCurrency,reportingAmountMinor,reportingCurrency,currencyDecisionReason:decision.reason,claimedTwdMinor:reportingCurrency==="TWD"?reportingAmountMinor:null,cardLast4:input.paymentMethod==="credit_card"?input.cardLast4:null,status:"ready" as const,masterDataVersion:MASTER_DATA_VERSION,updatedAt:now};if(existing)await db.update(personalExpenses).set(values).where(eq(personalExpenses.id,existing.id));else await db.insert(personalExpenses).values({id:crypto.randomUUID(),...values,createdAt:now});
  }
  if(input.status==="ready"&&!shouldCreateExpense)await db.delete(personalExpenses).where(and(eq(personalExpenses.sourceDocumentId,id),eq(personalExpenses.ownerEmail,user.email)));
  await recordAudit({tripId:before.tripId,actorEmail:user.email,entityType:"uploaded_document",entityId:id,action:"confirm",before,after:input});
