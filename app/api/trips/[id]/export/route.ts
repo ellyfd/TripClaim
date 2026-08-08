@@ -1,5 +1,5 @@
 import {NextResponse} from "next/server";
-import {and,asc,eq} from "drizzle-orm";
+import {and,asc,eq,isNull} from "drizzle-orm";
 import {strToU8,zipSync} from "fflate";
 import {getChatGPTUser} from "../../../../chatgpt-auth";
 import {getDb} from "../../../../../db";
@@ -15,7 +15,7 @@ const workbook=(sheets:Array<{name:string;rows:(string|number)[][]}>)=>{const fi
 export async function GET(request:Request,{params}:{params:Promise<{id:string}>}){
  const user=await getChatGPTUser(),{id:tripId}=await params;if(!user)return NextResponse.json({error:"authentication_required"},{status:401});
  if(!await requireTripMember(tripId,user.email))return NextResponse.json({error:"forbidden"},{status:403});
- const db=await getDb(),expenses=await db.select().from(personalExpenses).where(and(eq(personalExpenses.tripId,tripId),eq(personalExpenses.ownerEmail,user.email))).orderBy(asc(personalExpenses.expenseDate)),groups=buildExpenseGroups(expenses),documentIds=[...new Set(expenses.map(x=>x.sourceDocumentId).filter(Boolean))] as string[],allDocuments=await db.select().from(uploadedDocuments).where(and(eq(uploadedDocuments.tripId,tripId),eq(uploadedDocuments.ownerEmail,user.email))),documents=documentIds.length?allDocuments.filter(x=>documentIds.includes(x.id)):[],documentsById=new Map(documents.map(x=>[x.id,x])),files:Record<string,Uint8Array>={};
+ const db=await getDb(),expenses=await db.select().from(personalExpenses).where(and(eq(personalExpenses.tripId,tripId),eq(personalExpenses.ownerEmail,user.email),isNull(personalExpenses.deletedAt))).orderBy(asc(personalExpenses.expenseDate)),groups=buildExpenseGroups(expenses),documentIds=[...new Set(expenses.map(x=>x.sourceDocumentId).filter(Boolean))] as string[],allDocuments=await db.select().from(uploadedDocuments).where(and(eq(uploadedDocuments.tripId,tripId),eq(uploadedDocuments.ownerEmail,user.email),isNull(uploadedDocuments.deletedAt))),documents=documentIds.length?allDocuments.filter(x=>documentIds.includes(x.id)):[],documentsById=new Map(documents.map(x=>[x.id,x])),files:Record<string,Uint8Array>={};
  files["00_旅費報支彙總.csv"]=strToU8(csv([["行次","報支項目","申報幣別","申報總額","費用筆數","憑證數"],...groups.map(g=>[g.rowNumber,g.category,g.currency,(g.amountMinor/100).toFixed(2),g.expenses.length,g.expenses.reduce((sum,x)=>sum+(x.receiptCount||1),0)])]));
  files["00_費用明細.csv"]=strToU8(csv([["行次","日期","報支項目","店家／說明","原始幣別","原始金額","申報幣別","申報金額","憑證數","Remark","費用歸屬","卡末四碼"],...groups.flatMap(g=>g.expenses.map(x=>[g.rowNumber,x.expenseDate,x.category,x.merchant,originalCurrencyOf(x),((originalAmountOf(x))/100).toFixed(2),reportingCurrencyOf(x),((reportingAmountOf(x))/100).toFixed(2),x.receiptCount,x.remark??"",x.costCenter,x.cardLast4??""]))]));
  const manifest:{generatedAt:string;tripId:string;ownerEmail:string;groups:Array<Record<string,unknown>>}={generatedAt:new Date().toISOString(),tripId,ownerEmail:user.email,groups:[]};
