@@ -62,11 +62,11 @@
 
 ### Sprint 3：正式彙總與輸出（P0）
 
-- [ ] 共用 groupKey = 公司報支項目 ID + 申報幣別。
+- [x] 共用 groupKey = 公司報支項目 + 申報幣別；同項目不同幣別強制拆行。
 - [ ] Excel 包含報支彙總、費用明細、信用卡與手續費、缺件與附件索引。
-- [ ] ZIP 依報支行次建立「序號_項目_幣別」資料夾。
-- [ ] 產生 manifest，保存費用、附件、原始檔名與標準檔名對照。
-- [ ] Excel、ZIP 與 manifest 使用同一次 server-side export snapshot。
+- [x] ZIP 依報支行次建立「序號_項目_幣別」資料夾。
+- [x] 產生 manifest，保存費用、附件、原始檔名與標準檔名對照。
+- [x] ZIP 內彙總、明細、manifest 與附件使用同一次 server-side export snapshot。
 
 完成定義：相同項目不同申報幣別必定拆行；Excel、ZIP、明細與附件 100% 對應。
 
