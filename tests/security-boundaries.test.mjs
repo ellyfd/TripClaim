@@ -176,3 +176,18 @@ test("expense workbench uses a desktop drawer and a mobile task order",async()=>
  assert.match(styles,/\.expense-tools \.missing-live\{order:3\}/);
  assert.match(styles,/\.expense-side-documents\{order:4\}/);
 });
+
+test("mobile itinerary is a focused today mode with persistent navigation",async()=>{
+ const [agenda,page,styles]=await Promise.all([
+  read("app/AgendaSheet.tsx"),
+  read("app/page.tsx"),
+  read("app/globals.css"),
+ ]);
+ assert.match(agenda,/todayIndex=visibleDates\.indexOf/);
+ assert.match(agenda,/mobile-agenda-title">今日行程/);
+ assert.match(page,/const mobileBottomNav=<nav/);
+ assert.doesNotMatch(page,/const mobileBottomNav=activeTrip&&/);
+ assert.match(page,/>今日<\/span>/);
+ assert.match(styles,/\.agenda-sheet-editor\{position:fixed!important/);
+ assert.match(styles,/\.agenda-toolbar-actions>\.agenda-view-toggle/);
+});
