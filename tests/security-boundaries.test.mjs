@@ -162,6 +162,18 @@ test("formal records pin the immutable company master version",async()=>{
  assert.match(migration,/master_data_version/);
 });
 
+test("formal records store master codes and reject unmapped labels",async()=>{
+ const [config,schema,trips,tripEdit,documents,expenses,migration]=await Promise.all([
+  read("app/managed-config.ts"),read("db/schema.ts"),read("app/api/trips/route.ts"),read("app/api/trips/[id]/route.ts"),
+  read("app/api/documents/route.ts"),read("app/api/expenses/[id]/route.ts"),read("drizzle/0017_master_codes.sql"),
+ ]);
+ assert.match(config,/CLAIM_TYPE_CODES/);assert.match(config,/resolveManagedDestination/);
+ assert.match(schema,/masterDataExceptions/);assert.match(schema,/categoryCode/);
+ for(const source of [trips,tripEdit])assert.match(source,/cityCode/);
+ assert.match(documents,/masterDataExceptions/);assert.match(expenses,/managedClaimTypeCode/);
+ assert.match(migration,/master_data_exceptions/);
+});
+
 test("exports group by company claim type and reporting currency",async()=>{
  const [grouping,route,inbox]=await Promise.all([
   read("app/expense-export.ts"),
