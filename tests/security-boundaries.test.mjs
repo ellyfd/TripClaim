@@ -208,6 +208,13 @@ test("exports group by company claim type and reporting currency",async()=>{
  assert.match(inbox,/api\/trips\/\$\{encodeURIComponent\(tripId\)\}\/export/);
 });
 
+test("formal Excel contains five reconciled reporting sheets and is bundled with ZIP",async()=>{
+ const route=await read("app/api/trips/[id]/export/route.ts"),summary=await read("app/ExpenseSummary.tsx");
+ for(const name of ["報支彙總","費用明細","信用卡與手續費","缺件","附件索引"])assert.match(route,new RegExp(name));
+ assert.match(route,/00_正式旅費報支\.xlsx/);assert.match(route,/searchParams\.get\("format"\)===\"xlsx\"/);
+ assert.match(summary,/export\?format=xlsx/);
+});
+
 test("card statements remain evidence and foreign fees are separate TWD expenses",async()=>{
  const [upload,confirm,workbench]=await Promise.all([
   read("app/api/documents/route.ts"),
