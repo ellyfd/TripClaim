@@ -90,6 +90,14 @@ export const auditLogs = sqliteTable("audit_logs", {
   createdAt: text("created_at").notNull(),
 });
 
+export const masterDataExceptions = sqliteTable("master_data_exceptions", {
+  id: text("id").primaryKey(), tripId: text("trip_id"), ownerEmail: text("owner_email").notNull(),
+  sourceType: text("source_type").notNull(), sourceId: text("source_id"), fieldName: text("field_name").notNull(),
+  rawValue: text("raw_value").notNull(), masterDataVersion: text("master_data_version").notNull(),
+  status: text("status", { enum: ["open", "resolved", "ignored"] }).notNull().default("open"),
+  createdAt: text("created_at").notNull(), resolvedAt: text("resolved_at"),
+});
+
 export const travelRequests = sqliteTable("travel_requests", {
   id: text("id").primaryKey(),
   tripId: text("trip_id").notNull(),
@@ -135,6 +143,7 @@ export const personalExpenses = sqliteTable("personal_expenses", {
   sourceDocumentId: text("source_document_id"),
   sourceBookingId: text("source_booking_id"),
   category: text("category").notNull(),
+  categoryCode: text("category_code"),
   merchant: text("merchant").notNull(),
   expenseDate: text("expense_date").notNull(),
   amountMinor: integer("amount_minor").notNull(),
