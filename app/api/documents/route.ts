@@ -6,7 +6,8 @@ import {getDb} from "../../../db";
 import {requireTripMember} from "../../../db/access";
 import {masterDataExceptions,uploadedDocuments} from "../../../db/schema";
 import {MANAGED_AIRPORT_CODES,normalizeManagedAirportText} from "../../airport-directory";
-import {decideReportingCurrency,MASTER_DATA_VERSION} from "../../managed-config";
+import {MASTER_DATA_VERSION} from "../../managed-config";
+import {validateExpenseMaster} from "../../master-data-validation";
 const allowed=new Set(["image/jpeg","image/png","image/webp","image/heic","image/heif","application/pdf"]);
 
 const pad=(value:string|number)=>String(value).padStart(2,"0");
@@ -73,7 +74,7 @@ export async function POST(request:NextRequest){
  if(!(file instanceof File))return NextResponse.json({error:"file_required"},{status:400});if(!allowed.has(file.type))return NextResponse.json({error:"unsupported_file_type"},{status:415});if(file.size>15*1024*1024)return NextResponse.json({error:"file_too_large"},{status:413});
  const bytes=await file.arrayBuffer(),digest=await crypto.subtle.digest("SHA-256",bytes),contentHash=Array.from(new Uint8Array(digest)).map(x=>x.toString(16).padStart(2,"0")).join(""),db=await getDb(),[duplicate]=await db.select({id:uploadedDocuments.id,originalName:uploadedDocuments.originalName}).from(uploadedDocuments).where(and(eq(uploadedDocuments.ownerEmail,user.email),eq(uploadedDocuments.tripId,tripId),eq(uploadedDocuments.contentHash,contentHash))).limit(1);
  let extracted=String(data.get("ocrText")??"");if(file.type==="application/pdf"){try{const pdf=await getDocumentProxy(new Uint8Array(bytes));extracted=String((await extractText(pdf,{mergePages:true})).text??"")}catch{}}
- const documentType=inferDocumentType(extracted,file.name,requestedType),prefill=parseDocument(extracted,file.name,documentType),cardEvidence=documentType.includes("信用卡")||documentType.includes("刷卡"),feeEvidence=isForeignTransactionFee(extracted,file.name),claimType=documentType.includes("機票")?"機票(自行刷卡)":documentType.includes("住宿")?"住宿":documentType.includes("交通")?"車資":feeEvidence?"國外交易手續費":cardEvidence?null:"餐飲",currencyDecision=decideReportingCurrency(prefill.currency);
+ const documentType=inferDocumentType(extracted,file.name,requestedType),prefill=parseDocument(extracted,file.name,documentType),cardEvidence=documentType.includes("信用卡")||documentType.includes("刷卡"),feeEvidence=isForeignTransactionFee(extracted,file.name),claimType=documentType.includes("機票")?"機票(自行刷卡)":documentType.includes("住宿")?"住宿":documentType.includes("交通")?"車資":feeEvidence?"國外交易手續費":cardEvidence?null:"餐飲",master=validateExpenseMaster({claimType,originalCurrency:prefill.currency}),currencyDecision=master.currencyDecision;
  if(file.type==="application/pdf"&&!extracted.trim())prefill.warnings.unshift("PDF 沒有可讀文字層，可能是掃描檔；請確認日期、金額與地點");
  if(currencyDecision.requiresTwd)prefill.warnings.push(`偵測到 ${currencyDecision.originalCurrency}；${currencyDecision.reason}`);
  if(cardEvidence&&!feeEvidence)prefill.warnings.push("此文件是付款證明，不會另建一筆消費；請配對既有費用");
