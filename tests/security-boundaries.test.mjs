@@ -17,6 +17,16 @@ test("personal trip resources require explicit trip context",async()=>{
  }
 });
 
+test("the selected trip and stage are canonical URL state",async()=>{
+ const [page,create,itinerary,expense]=await Promise.all([read("app/page.tsx"),read("app/CreateTripWizardLive.tsx"),read("app/ItineraryWizardLive.tsx"),read("app/ExpenseWizardLive.tsx")]);
+ assert.match(page,/searchParams\.set\("trip",trip\.id\)/);
+ assert.match(page,/searchParams\.set\("stage",target\)/);
+ assert.match(page,/popstate/);
+ for(const source of [create,itinerary,expense])assert.doesNotMatch(source,/sessionStorage/);
+ assert.match(itinerary,/\{tripId\}:\{tripId:string\}/);
+ assert.match(expense,/\{tripId\}:\{tripId:string\}/);
+});
+
 test("personal document and expense mutations verify ownership and membership",async()=>{
  const [documents,expenses]=await Promise.all([
   read("app/api/documents/[id]/route.ts"),

@@ -12,8 +12,8 @@ This inventory distinguishes immutable company master data from transitional imp
 
 | Area | Current source | Risk | Target |
 | --- | --- | --- | --- |
-| Active-trip navigation | `CreateTripWizardLive.tsx`, `ItineraryWizardLive.tsx`, and `ExpenseWizardLive.tsx` use `sessionStorage.activeTripId` | A browser tab hint is being used as route context; direct links and multiple tabs can select a different trip | Put `tripId` in the URL; retain session storage only as a non-authoritative convenience |
-| Legacy personal-travel endpoint | `app/api/my-travel/route.ts` pins `TRIP_ID = france-poland-2026` | New trips can never be the authoritative context | Remove after all callers use `/api/trips/:id/bookings` and `/api/trips/:id/expenses` |
+| Active-trip navigation | Resolved: `trip` and `stage` are canonical URL query parameters | Direct links, browser Back/Forward, and multiple tabs now retain their own trip context | Keep component data requests scoped to the URL-selected trip |
+| Legacy personal-travel endpoint | Resolved: the fixed `france-poland-2026` endpoint and unused prototype were removed | No production request can silently fall back to the old demonstration trip | Continue using `/api/trips/:id/*` routes only |
 
 ## Intentional fixed master data — do not replace with free text
 
@@ -31,6 +31,4 @@ The Golden Dataset and performance tests repeat a small set of labels only to de
 ## Removal order
 
 1. Add server-owned users and roles with authorization and audit.
-2. Make `/trips/:tripId/{itinerary,expenses}` the canonical navigation contract.
-3. Remove the fixed-trip `/api/my-travel` route and its unused UI callers.
-4. Re-run Golden Dataset, privacy, export, and device-matrix tests before release.
+2. Re-run Golden Dataset, privacy, export, and device-matrix tests before release.

@@ -62,8 +62,7 @@ export default function CreateTripWizardLive({onCreate,onExpense}:{onCreate:(tri
  const effectiveName=nameEdited?form.name:autoName;
  const changeStop=(i:number,key:keyof Stop,value:string)=>setForm(v=>({...v,stops:v.stops.map((s,n)=>n===i?{...s,[key]:value,...(key==="country"?{city:value?(destinations[value]?.[0]??""):""}:{})}:s)}));
  const addEmail=()=>{const value=email.trim().toLowerCase();if(value&&!form.emails.includes(value))setForm(v=>({...v,emails:[...v.emails,value]}));setEmail("")};
- const rememberTrip=(id:string)=>{try{window.sessionStorage.setItem("activeTripId",id)}catch{/* Continue even when browser storage is restricted. */}};
- const openTrip=(trip:Trip,target:"itinerary"|"expense")=>{rememberTrip(trip.id);const opened={id:trip.id,name:trip.name};if(target==="expense"&&onExpense)onExpense(opened);else onCreate(opened)};
+ const openTrip=(trip:Trip,target:"itinerary"|"expense")=>{const opened={id:trip.id,name:trip.name};if(target==="expense"&&onExpense)onExpense(opened);else onCreate(opened)};
  const startNew=()=>{setForm(initial);setNameEdited(false);setEditingId("");setStep(1);setMode("create")};
  const editTrip=(trip:Trip)=>{setForm({name:trip.name,purpose:trip.purpose??trip.name,startsOn:trip.startsOn,endsOn:trip.endsOn,stops:trip.destinations.length?trip.destinations.map(x=>({country:`${x.countryName} ${x.countryCode}`,city:x.cityName})):[{country:"",city:""}],emails:[]});setNameEdited(true);setEditingId(trip.id);setStep(1);setMode("edit")};
  const deleteTrip=async()=>{if(!pendingDelete)return;setDeleting(true);const r=await fetch(`/api/trips/${pendingDelete.id}`,{method:"DELETE"});if(r.ok){setTrips(v=>v.filter(x=>x.id!==pendingDelete.id));setPendingDelete(null)}else window.alert("只有建立者可以刪除這趟出差。");setDeleting(false)};
@@ -78,7 +77,7 @@ export default function CreateTripWizardLive({onCreate,onExpense}:{onCreate:(tri
   if(!response.ok){setState("error");setErrorMsg(response.status===401?"登入狀態已失效，請重新整理頁面後再試。":response.status>=500?"系統暫時無法保存（不是資料填寫問題），請稍後再試；若持續發生請聯絡管理員。":"保存失敗，請檢查欄位內容後重試。");return}
   const result=await response.json(),id=mode==="edit"?editingId:result.id;
   if(mode!=="edit")for(const memberEmail of form.emails)await fetch(`/api/trips/${id}/members`,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({email:memberEmail,role:"member"})});
-  rememberTrip(id);setState("ready");onCreate({id,name:effectiveName});
+  setState("ready");onCreate({id,name:effectiveName});
  };
 
  if(mode==="list")return <section className="my-trips-page">
