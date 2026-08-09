@@ -1,0 +1,18 @@
+{
+  "description": "TripClaim company reporting golden dataset",
+  "records": [
+    {"id":"meal-gbp-1","kind":"expense","category":"餐飲","originalCurrency":"GBP","originalAmountMinor":3860,"reportingCurrency":"GBP","reportingAmountMinor":3860},
+    {"id":"meal-gbp-2","kind":"expense","category":"餐飲","originalCurrency":"GBP","originalAmountMinor":8700,"reportingCurrency":"GBP","reportingAmountMinor":8700},
+    {"id":"meal-eur-1","kind":"expense","category":"餐飲","originalCurrency":"EUR","originalAmountMinor":6230,"reportingCurrency":"EUR","reportingAmountMinor":6230},
+    {"id":"meal-eur-2","kind":"expense","category":"餐飲","originalCurrency":"EUR","originalAmountMinor":15200,"reportingCurrency":"EUR","reportingAmountMinor":15200},
+    {"id":"taxi-pln-1","kind":"expense","category":"車資","originalCurrency":"PLN","originalAmountMinor":19152,"reportingCurrency":"TWD","reportingAmountMinor":169600},
+    {"id":"card-statement-1","kind":"evidence","documentType":"信用卡帳單","originalCurrency":"TWD","originalAmountMinor":169600,"linkedExpenseId":"taxi-pln-1"},
+    {"id":"foreign-fee-1","kind":"expense","category":"國外交易手續費","originalCurrency":"TWD","originalAmountMinor":2544,"reportingCurrency":"TWD","reportingAmountMinor":2544}
+  ],
+  "expectedGroups": [
+    {"category":"車資","currency":"TWD","amountMinor":169600,"expenseIds":["taxi-pln-1"]},
+    {"category":"餐飲","currency":"EUR","amountMinor":21430,"expenseIds":["meal-eur-1","meal-eur-2"]},
+    {"category":"餐飲","currency":"GBP","amountMinor":12560,"expenseIds":["meal-gbp-1","meal-gbp-2"]},
+    {"category":"國外交易手續費","currency":"TWD","amountMinor":2544,"expenseIds":["foreign-fee-1"]}
+  ]
+}
