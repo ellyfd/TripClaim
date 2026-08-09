@@ -3,7 +3,7 @@ import {useEffect,useState} from "react";
 import {DEFAULT_CLAIM_TYPES,DEFAULT_CURRENCIES,DEFAULT_DESTINATIONS} from "./managed-config";
 import {airportsForManagedCity} from "./airport-directory";
 
-type Account={displayName:string;email:string;notificationEmail?:string;authenticated:boolean};
+type Account={displayName:string;email:string;notificationEmail?:string;authenticated:boolean;role?:"admin"|"member"|"finance"|"viewer"|null};
 type SavedProfile={displayName:string;notificationEmail:string};
 type Role="admin"|"member"|"finance"|"viewer";
 type LoginUser={displayName:string;email:string;role:Role};

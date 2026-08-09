@@ -2,11 +2,11 @@
 
 This inventory distinguishes immutable company master data from transitional implementation shortcuts. Company claim items, reporting currencies, countries, cities, and airports are intentionally fixed and must not be made editable.
 
-## P0 — replace before multi-user production
+## P0 — resolved before multi-user production
 
 | Area | Current source | Risk | Target |
 | --- | --- | --- | --- |
-| Login-user administration | `SystemManagement.tsx` stores the user list and roles in `localStorage` | Device-local state is neither authoritative nor shared and cannot enforce API authorization | Server-owned membership/role table, authenticated admin mutations, audit log |
+| Login-user administration | Resolved: roles are server-owned and returned by `/api/me` | Header only shows management to administrators; API mutations still enforce the role independently | Keep role changes authenticated, audited and protected against removing the final administrator |
 
 ## P1 — remove after route migration
 
@@ -30,5 +30,4 @@ The Golden Dataset and performance tests repeat a small set of labels only to de
 
 ## Removal order
 
-1. Add server-owned users and roles with authorization and audit.
-2. Re-run Golden Dataset, privacy, export, and device-matrix tests before release.
+1. Re-run Golden Dataset, privacy, export, role-visibility, and device-matrix tests before release.
