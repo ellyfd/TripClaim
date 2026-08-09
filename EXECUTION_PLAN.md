@@ -71,7 +71,8 @@
 
 ### Sprint 4：響應式骨架與 Design System（P0）
 
-- [ ] 清理舊 Prototype 與重複 CSS。
+- [x] 移除首頁中已被正式工作台取代、但仍留在 bundle 的舊 Prototype 元件與示範資料。
+- [ ] 將歷史重複 CSS 依頁面模組拆分並移除失效選擇器。
 - [x] 統一 Typography、Spacing、Control、Radius、Color tokens，並建立最終優先層避免縮放時字級跳動。
 - [x] 收斂核心工作台為四段：≥1440、1200–1439、900–1199、<900。
 - [x] 桌機主欄使用 minmax(0, 1fr)，右欄不足寬度改 Drawer。
