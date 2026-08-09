@@ -6,6 +6,7 @@
 - 資料：migration 為 additive；未知主檔值進例外佇列，不靜默轉換。
 - 裝置：完成 `DEVICE_QA.md` 的自動檢核；內部測試帳號完成手機 smoke test。
 - 安全：附件只經登入授權串流，回應使用 `private, no-store` 與 `nosniff`。
+- 人員：新帳號必須同時存在於 Sites 網站存取名單與 TripClaim 系統人員主檔；兩邊使用相同 Email。
 
 ## 漸進啟用
 
