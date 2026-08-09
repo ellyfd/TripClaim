@@ -8,30 +8,15 @@ import MobileExpenseOverview from "./MobileExpenseOverview";
 import {prepareImageForUpload,recognizeDocumentText} from "./client-document-processing";
 type Result={name:string;state:"uploading"|"scanning"|"review"|"done"|"duplicate"|"failed";confidence?:number;warnings?:string[]};
 
-export default function ExpenseWizardLive({onBack}:{onBack:()=>void}){
- const [tripId,setTripId]=useState(""),[results,setResults]=useState<Result[]>([]),[busy,setBusy]=useState(false),[uploadType,setUploadType]=useState("自動辨識"),[showCards,setShowCards]=useState(false),[showDesktopTools,setShowDesktopTools]=useState(false),[pageState,setPageState]=useState<"loading"|"ready"|"unavailable">("loading"),[refreshKey,setRefreshKey]=useState(0);const ref=useRef<HTMLInputElement>(null);
- useEffect(()=>{
-  let cancelled=false;
-  const start=async()=>{
-   let saved="";
-   try{saved=window.sessionStorage.getItem("activeTripId")||""}catch{/* Some privacy-restricted browsers block session storage. */}
-   if(!saved){const response=await fetch("/api/trips");if(response.ok)saved=(await response.json())?.trips?.[0]?.id||""}
-   if(cancelled)return;
-   setTripId(saved);
-   setPageState(saved?"ready":"unavailable");
-  };
-  start().catch(()=>{if(!cancelled)setPageState("unavailable")});
-  return()=>{cancelled=true};
- },[]);
+export default function ExpenseWizardLive({tripId}:{tripId:string}){
+ const [results,setResults]=useState<Result[]>([]),[busy,setBusy]=useState(false),[uploadType,setUploadType]=useState("自動辨識"),[showCards,setShowCards]=useState(false),[showDesktopTools,setShowDesktopTools]=useState(false),[refreshKey,setRefreshKey]=useState(0);const ref=useRef<HTMLInputElement>(null);
  const choose=(type:string)=>{setUploadType(type);ref.current?.click()};
  useEffect(()=>{const openUpload=()=>{setUploadType("自動辨識");ref.current?.click()};window.addEventListener("tripclaim:upload",openUpload);return()=>window.removeEventListener("tripclaim:upload",openUpload)},[]);
  const upload=async()=>{const files=Array.from(ref.current?.files??[]);if(!files.length)return;setBusy(true);setResults(files.map(f=>({name:f.name,state:"uploading"})));for(const original of files){setResults(v=>v.map(x=>x.name===original.name?{...x,state:"scanning"}:x));let file=original,localWarnings:string[]=[];try{const prepared=await prepareImageForUpload(original);file=prepared.file;localWarnings=prepared.warnings}catch{/* Preserve the original when browser image processing is unavailable. */}const body=new FormData();body.append("file",file,original.name);body.append("documentType",uploadType);if(tripId)body.append("tripId",tripId);try{const text=await recognizeDocumentText(file);if(text)body.append("ocrText",text)}catch{/* Keep the original file and let the user confirm missing fields. */}let result:Result={name:original.name,state:"failed"};for(let attempt=0;attempt<2&&result.state==="failed";attempt++){const r=await fetch("/api/documents",{method:"POST",body}).catch(()=>null);if(r?.ok){const data=await r.json();result={name:original.name,state:data.status==="ready"?"done":"review",confidence:data.confidence,warnings:[...localWarnings,...(data.warnings??[])]}}else if(r?.status===409)result={name:original.name,state:"duplicate"}}setResults(v=>v.map(x=>x.name===original.name?result:x))}setBusy(false);setRefreshKey(v=>v+1);if(ref.current)ref.current.value=""};
  const exportClick=(index:number)=>document.querySelector<HTMLButtonElement>(`.expense-export-actions button:nth-child(${index})`)?.click();
  return <main className="expense-workbench-page" id="my-expense">
   <header className="expense-workbench-head"><div><span>步驟 3・只顯示本人資料</span><h1>我的報帳</h1><p>中間整理費用流水帳；右側集中上傳、文件、缺件與匯出。</p></div><button className="expense-drawer-trigger" onClick={()=>setShowDesktopTools(true)}>工具與文件</button></header>
-  {pageState==="loading"&&<section className="expense-page-notice panel"><b>正在開啟我的報帳…</b><span>正在讀取目前出差與本人資料。</span></section>}
-  {pageState==="unavailable"&&<section className="expense-page-notice panel"><b>尚未選擇出差</b><span>請先回到「我的出差」選擇一趟，再進入個人報帳。</span><button onClick={onBack}>返回共同行程</button></section>}
-  {pageState==="ready"&&<>
+  <>
   <MobileExpenseOverview tripId={tripId} refreshKey={refreshKey}/>
   <div className="expense-workbench-grid"><section className="expense-workbench-main" id="expense-records"><ExpenseSummary tripId={tripId} refreshKey={refreshKey}/></section>
    <aside className={`expense-tools ${showDesktopTools?"drawer-open":""}`}>
@@ -45,6 +30,6 @@ export default function ExpenseWizardLive({onBack}:{onBack:()=>void}){
   </div>
   {showDesktopTools&&<button className="expense-drawer-backdrop" aria-label="關閉工具" onClick={()=>setShowDesktopTools(false)}/>}
   {showCards&&<div className="expense-tools-overlay" onClick={()=>setShowCards(false)}><div onClick={e=>e.stopPropagation()}><button className="expense-tools-close" onClick={()=>setShowCards(false)}>×</button><CardCenter tripId={tripId}/></div></div>}
-  </>}
+  </>
  </main>;
 }
