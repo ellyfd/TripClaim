@@ -17,6 +17,14 @@ const SIGN_OUT_PATH = "/signout-with-chatgpt";
 const CALLBACK_PATH = "/callback";
 
 export async function getChatGPTUser(): Promise<ChatGPTUser | null> {
+  const identity = await getChatGPTIdentity();
+  if (!identity) return null;
+  const { ensureSystemRole } = await import("../db/access");
+  const { role } = await ensureSystemRole(identity);
+  return role ? identity : null;
+}
+
+async function getChatGPTIdentity(): Promise<ChatGPTUser | null> {
   const requestHeaders = await headers();
   const email = requestHeaders.get(USER_EMAIL_HEADER);
   if (!email) return null;
