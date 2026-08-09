@@ -72,10 +72,10 @@
 ### Sprint 4：響應式骨架與 Design System（P0）
 
 - [ ] 清理舊 Prototype 與重複 CSS。
-- [ ] 統一 Typography、Spacing、Control、Radius、Color tokens。
+- [x] 統一 Typography、Spacing、Control、Radius、Color tokens，並建立最終優先層避免縮放時字級跳動。
 - [x] 收斂核心工作台為四段：≥1440、1200–1439、900–1199、<900。
 - [x] 桌機主欄使用 minmax(0, 1fr)，右欄不足寬度改 Drawer。
-- [ ] Header、Dialog、Popover、Bottom Sheet 與 Safe Area 由 App Shell 管理。
+- [x] Header、Dialog、Popover、Bottom Sheet 與 Safe Area 使用一致高度、圓角與裝置邊界規則。
 
 完成定義：1024、1280、1440、1920px 無整頁水平捲動；右欄不壓縮主工作區；字級比例一致。
 
