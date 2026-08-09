@@ -12,6 +12,7 @@ export const systemUsers = sqliteTable("system_users", {
   email: text("email").primaryKey(),
   displayName: text("display_name").notNull(),
   role: text("role", { enum: ["admin", "member", "finance", "viewer"] }).notNull().default("member"),
+  enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
   createdByEmail: text("created_by_email").notNull(),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
