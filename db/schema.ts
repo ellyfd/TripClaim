@@ -8,6 +8,15 @@ export const userProfiles = sqliteTable("user_profiles", {
   updatedAt: text("updated_at").notNull(),
 });
 
+export const systemUsers = sqliteTable("system_users", {
+  email: text("email").primaryKey(),
+  displayName: text("display_name").notNull(),
+  role: text("role", { enum: ["admin", "member", "finance", "viewer"] }).notNull().default("member"),
+  createdByEmail: text("created_by_email").notNull(),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
+});
+
 export const trips = sqliteTable("trips", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),

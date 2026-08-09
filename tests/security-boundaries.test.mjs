@@ -149,6 +149,19 @@ test("company claim and currency masters remain fixed",async()=>{
  assert.match(documents,/validateExpenseMaster/);assert.match(expense,/validateExpenseMaster/);
 });
 
+test("login users and roles are server-owned and admin-audited",async()=>{
+ const [schema,migration,access,route,management]=await Promise.all([
+  read("db/schema.ts"),read("drizzle/0021_system_users.sql"),read("db/access.ts"),read("app/api/admin/users/route.ts"),read("app/SystemManagement.tsx"),
+ ]);
+ for(const source of [schema,migration])assert.match(source,/system_users|systemUsers/);
+ assert.match(access,/requireSystemAdmin/);
+ assert.match(route,/admin_required/);
+ assert.match(route,/last_admin/);
+ assert.match(route,/recordAudit/);
+ assert.doesNotMatch(management,/localStorage/);
+ assert.match(management,/\/api\/admin\/users/);
+});
+
 test("formal records pin the immutable company master version",async()=>{
  const [config,schema,trips,bookings,documents,migration]=await Promise.all([
   read("app/managed-config.ts"),read("db/schema.ts"),read("app/api/trips/route.ts"),
