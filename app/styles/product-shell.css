@@ -1,0 +1,154 @@
+/* 2026-07 product shell: one visual system for trips, itinerary and expenses. */
+:root{
+ --app-max:1440px;
+ --aside-width:288px;
+ --font-xs:12px;
+ --font-sm:14px;
+ --font-md:16px;
+ --font-lg:20px;
+ --font-xl:26px;
+ --line-body:1.5;
+ --space-1:8px;
+ --space-2:12px;
+ --space-3:16px;
+ --space-4:24px;
+ --space-5:32px;
+ --control-h:44px;
+ --radius-sm:8px;
+ --radius:12px;
+ --radius-lg:16px;
+}
+body{font-size:15px;line-height:1.5}
+.panel{border-radius:var(--radius);box-shadow:0 1px 2px rgba(18,45,35,.025)}
+.topbar{height:72px;padding:0;background:#fff}
+.topbar-inner{width:min(var(--app-max),calc(100% - 64px));gap:32px}
+.brand{min-width:168px}.brand>span{width:40px;height:40px;border-radius:10px}.brand b{font-size:16px;line-height:1.25}.brand small{font-size:11px}
+.topbar nav{gap:8px;margin-left:32px}
+.topbar nav button{min-width:116px;padding:0 14px;display:flex;align-items:center;justify-content:center;gap:8px;font-size:14px;font-weight:700}
+.topbar nav button i{width:22px;height:22px;display:grid;place-items:center;border-radius:50%;background:#edf2ef;color:#718079;font-size:11px;font-style:normal;font-weight:900}
+.topbar nav button.active i{background:var(--green);color:#fff}
+.topbar nav button:disabled{opacity:.38;cursor:not-allowed}
+.management-trigger{min-height:38px;padding:0 14px;border:1px solid #bfd0c8;border-radius:8px;background:white;color:var(--green);font-size:14px;font-weight:800;cursor:pointer}
+.account-menu{min-height:44px}
+.trip-context-nav{top:72px;min-height:48px;padding:0 max(32px,calc((100vw - var(--app-max))/2));grid-template-columns:148px minmax(0,1fr);background:#f8faf8}
+.trip-context-nav>div{justify-self:center}.trip-context-nav>div b{font-size:14px}.trip-context-nav>div span{font-size:12px}
+
+.my-trips-page{width:min(1280px,calc(100% - 64px));margin:32px auto 80px}
+.my-trips-head{margin-bottom:20px}.my-trips-head h1{margin:2px 0;font-size:28px;line-height:1.25}.my-trips-head p{font-size:14px}
+.my-trip-row{grid-template-columns:96px minmax(260px,1fr) 220px 260px;min-height:104px;padding:16px 20px;gap:20px}
+.trip-main h2{font-size:17px}.trip-row-actions{gap:8px}.trip-row-actions button,.trip-more summary{min-height:40px}
+
+.itinerary-workspace-page{min-height:calc(100vh - 120px);padding-bottom:64px;background:#f4f6f4}
+.itinerary-workspace-page .wizard-stage{width:min(var(--app-max),calc(100vw - 64px));padding-top:18px}
+.itinerary-wizard .step-heading{min-height:72px;margin:0 0 8px;padding-right:180px}
+.itinerary-wizard .step-heading>span,.expense-workbench-head span{font-size:12px;letter-spacing:.02em}
+.itinerary-wizard .step-heading h1,.expense-workbench-head h1{margin:2px 0;font-size:26px;line-height:1.25;font-weight:650;letter-spacing:-.015em}
+.itinerary-wizard .step-heading p,.expense-workbench-head p{font-size:14px;line-height:1.5}
+.itinerary-wizard .add-agenda{right:0;top:18px;min-width:144px}
+.sync-line{margin:0 0 10px!important;min-height:34px!important;padding:7px 10px!important}
+.agenda-workspace{display:grid;grid-template-columns:minmax(0,1fr) var(--aside-width);gap:16px;align-items:start}
+.agenda-workspace-main{min-width:0}.agenda-side{position:sticky;top:136px;display:flex;flex-direction:column;gap:12px;margin:0}
+.agenda-side .trip-todo-panel{display:block;padding:16px;border-radius:var(--radius)}
+.agenda-side .trip-todo-panel>header,.agenda-side .side-booking-actions,.agenda-side .todo-members{grid-column:auto;grid-row:auto}
+.agenda-side .todo-members{display:flex;margin-top:12px;max-height:330px;overflow:auto}
+.agenda-sheet-toolbar{top:120px;padding:8px 0}.agenda-sheet{height:clamp(680px,calc(100vh - 250px),940px);border-radius:9px;background:white}
+.agenda-sheet-toolbar b{font-size:16px}.agenda-sheet-toolbar span{font-size:12px}
+.agenda-toolbar-actions{gap:6px}.agenda-sheet-toolbar button{min-height:36px;font-size:12px}
+.agenda-sheet-tip{margin:8px 0 0;font-size:12px}
+
+.expense-workbench-page{padding:20px max(32px,calc((100vw - var(--app-max))/2)) 72px}
+.expense-workbench-head{min-height:72px;margin-bottom:10px}
+.expense-workbench-head{display:flex;align-items:center;justify-content:space-between;gap:16px}.expense-drawer-trigger,.expense-drawer-head,.expense-drawer-backdrop{display:none}
+.expense-workbench-grid{grid-template-columns:minmax(0,1fr) var(--aside-width);gap:16px}
+.expense-tools{top:136px;gap:12px}.expense-tools>.panel{padding:16px;border-radius:var(--radius)}
+.expense-upload-tools h2{font-size:18px}.expense-upload-main{min-height:46px;font-size:14px}
+.expense-workbench-main .expense-summary{padding:18px}.expense-workbench-main .expense-summary-head h2{font-size:19px}
+.expense-workbench-main .expense-real-list article{grid-template-columns:104px minmax(0,1fr) 150px 82px auto}
+.expense-side-documents .document-inbox{padding:14px;border-radius:var(--radius)}
+
+@media(max-width:1100px){
+ .topbar-inner{width:calc(100% - 40px)}.topbar nav{margin-left:0}.topbar nav button{min-width:104px}
+ .my-trips-page,.itinerary-workspace-page .wizard-stage{width:calc(100% - 40px)}
+ .my-trip-row{grid-template-columns:86px minmax(220px,1fr) 190px 230px;gap:12px}
+ .agenda-workspace{grid-template-columns:minmax(0,1fr) 260px}
+}
+
+@media(min-width:801px) and (max-width:1199px){
+ .expense-workbench-grid{display:block}.expense-workbench-main{width:100%}.expense-drawer-trigger{min-height:42px;padding:0 15px;display:inline-flex;align-items:center;border:1px solid #a9c2b6;border-radius:8px;background:white;color:var(--green);font-size:14px;font-weight:800}
+ .expense-tools{position:fixed;top:0;right:0;bottom:0;z-index:232;width:min(360px,92vw);padding:16px;overflow:auto;background:#f5f7f5;box-shadow:-18px 0 48px rgba(20,55,43,.2);transform:translateX(105%);transition:transform .2s ease}.expense-tools.drawer-open{transform:translateX(0)}
+ .expense-drawer-head{min-height:44px;display:flex;align-items:center;justify-content:space-between}.expense-drawer-head b{font-size:17px}.expense-drawer-head button{width:42px;height:42px;border:0;border-radius:50%;background:#e5eee9;color:var(--ink);font-size:25px}
+ .expense-drawer-backdrop{position:fixed;inset:0;z-index:231;display:block;border:0;background:rgba(18,42,34,.38)}
+}
+
+@media(max-width:800px){
+ body{font-size:16px;padding-bottom:calc(76px + env(safe-area-inset-bottom))}
+ .topbar{height:60px}.topbar-inner{width:100%;padding:0 14px}.brand{min-width:0}.brand div{display:none}
+ .topbar nav,.management-trigger,.account-name{display:none}.account-spacer{margin-left:auto}
+ .trip-context-nav{top:60px;height:48px;min-height:48px;padding:0 12px;display:grid;grid-template-columns:42px minmax(0,1fr)}
+ .trip-context-nav>div{display:block;justify-self:start}.trip-context-nav>div span{display:none}.trip-context-nav>div b{display:block;font-size:14px}
+ .my-trips-page{width:auto;margin:18px 12px 96px}.my-trips-head{align-items:flex-start}.my-trips-head h1{font-size:24px}.my-trips-head p{font-size:14px;line-height:1.45}
+ .my-trip-row{grid-template-columns:72px minmax(0,1fr);min-height:0;padding:14px;gap:10px}.trip-date{grid-row:1/3}.trip-progress{grid-column:2}.trip-row-actions{grid-column:1/3;grid-template-columns:1fr 1fr auto}
+ .itinerary-workspace-page .wizard-stage{width:100%;padding:12px 12px 0}.itinerary-wizard .step-heading{min-height:0;padding:0 0 8px}.itinerary-wizard .step-heading h1,.expense-workbench-head h1{font-size:23px}.itinerary-wizard .step-heading p{font-size:14px}.itinerary-wizard .add-agenda{position:static;width:100%;margin-top:10px;min-height:48px}
+ .agenda-workspace{display:flex;flex-direction:column}.agenda-workspace-main{order:1;width:100%}.agenda-side{order:2;position:static;width:100%;display:grid;grid-template-columns:1fr;margin-top:12px}
+ .agenda-sheet-toolbar{position:static}.agenda-toolbar-actions{grid-template-columns:1fr 1fr}.agenda-sheet{height:auto}.agenda-sheet-tip{font-size:13px;line-height:1.45}
+ .expense-workbench-page{padding:12px 12px calc(96px + env(safe-area-inset-bottom))}.expense-workbench-head{min-height:0;margin-bottom:8px}.expense-workbench-head p{display:none}
+ .expense-workbench-grid{display:flex;flex-direction:column;gap:10px}.expense-tools{display:contents}.expense-drawer-trigger,.expense-drawer-head,.expense-drawer-backdrop{display:none!important}.expense-workbench-main{order:2}
+ .expense-upload-tools{order:1;display:grid;grid-template-columns:minmax(0,1fr) 142px}.expense-upload-main{min-height:52px}
+ .expense-tools .missing-live{order:3}.expense-side-documents{order:4}.mobile-expense-more{order:5}
+ .mobile-nav{display:grid!important}
+}
+
+/* Shared booking comparison remains inside the large itinerary canvas. */
+.shared-booking-overview{margin-top:16px}
+.shared-booking-overview .booking-panel{display:block}
+.shared-booking-overview .booking-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.shared-booking-overview .booking-list-head{grid-column:1/-1;display:flex;align-items:end;justify-content:space-between;border-top:1px solid var(--line);padding-top:16px}
+.shared-booking-overview .booking-list-head h2{margin:2px 0;font-size:18px}
+.shared-booking-overview .booking-card{padding:14px;border-radius:10px}
+.shared-booking-overview .booking-card header b{font-size:15px}
+.shared-booking-overview .booking-card dl{grid-template-columns:1.5fr 1fr;gap:8px;margin:10px 0}
+
+/* Mobile Today Mode: share data with desktop, but expose only today's tasks. */
+.mobile-agenda-title{display:none}
+.mobile-expense-overview{display:none}
+@media(max-width:800px){
+ .desktop-agenda-title{display:none}.mobile-agenda-title{display:inline}
+ .agenda-sheet-toolbar{position:static;align-items:center}
+ .agenda-sheet-toolbar>div:first-child>span{font-size:13px}
+ .agenda-toolbar-actions{width:auto!important;display:block!important}
+ .agenda-toolbar-actions>.agenda-view-toggle,.agenda-toolbar-actions>button:not(.active-time-range):not(:first-of-type),.agenda-toolbar-actions>input{display:none!important}
+ .agenda-toolbar-actions>button{min-height:44px!important}
+ .agenda-mobile-days{position:sticky;top:108px;z-index:18;padding:7px 0;background:#f4f6f4}
+ .agenda-mobile-days button{min-height:44px}
+ .agenda-sheet-editor{position:fixed!important;left:0;right:0;bottom:calc(72px + env(safe-area-inset-bottom));z-index:225;max-height:72svh;margin:0;padding:16px 14px calc(16px + env(safe-area-inset-bottom));overflow:auto;border-radius:16px 16px 0 0;box-shadow:0 -18px 50px rgba(17,45,35,.24)}
+ .mobile-nav button[aria-disabled="true"]{color:#8b9892}.mobile-nav button[aria-disabled="true"] i{opacity:.55}
+ .mobile-expense-overview{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0 0 9px}.mobile-expense-overview>div{padding:11px;border-radius:9px;background:#eef5f1;display:flex;flex-direction:column}.mobile-expense-overview span,.mobile-expense-overview small{font-size:12px;color:var(--muted)}.mobile-expense-overview b{font-size:20px;color:var(--green)}.mobile-expense-overview>p{grid-column:1/-1;margin:4px 0 0;display:flex;align-items:end;justify-content:space-between}.mobile-expense-overview>p b{font-size:16px;color:var(--ink)}.mobile-expense-overview>p span{font-size:11px}
+ .expense-workbench-main .expense-totals{display:none}.expense-real-list article:nth-child(n+6){display:none}
+}
+.shared-booking-overview .booking-card dt{font-size:11px}
+.shared-booking-overview .booking-card dd{font-size:13px}
+.shared-booking-overview .booking-card footer a,.shared-booking-overview .booking-card footer button{min-height:34px;font-size:12px}
+.flight-segments>section>header{display:flex;align-items:center;gap:10px}
+.flight-segments>section>header span{flex:1;color:var(--muted);font-size:12px}
+.flight-segments>section>header button,.add-flight-segment{border:1px solid #b7c9c0;border-radius:7px;background:white;color:var(--green);font-weight:800}
+.flight-segments>section>header button{min-height:30px;padding:0 9px;color:#9a3f32;border-color:#dfc0ba}
+.add-flight-segment{width:100%;min-height:40px;margin-top:8px}
+
+@media(max-width:800px){
+ .shared-booking-overview{margin-top:10px}
+ .shared-booking-overview .booking-list{grid-template-columns:1fr}
+ .shared-booking-overview .booking-card dl{grid-template-columns:1fr 1fr}
+ .shared-booking-overview .booking-list-head{align-items:flex-start;flex-direction:column}
+ .quick-booking-dialog{max-height:calc(100svh - 12px)}
+ .flight-route-block{grid-template-columns:1fr 1fr}
+ .flight-route-block>i{display:none}
+}
+.expense-workbench-page,.missing-live{scroll-margin-top:118px}
+.expense-empty-cta{display:grid;justify-items:center;gap:12px;padding:34px 20px;margin-top:14px;border:1px dashed #b8ccc2;border-radius:10px;background:#f7faf8;text-align:center}
+.expense-empty-cta p{margin:0;color:var(--muted);font-size:14px;max-width:430px;line-height:1.55}
+.expense-empty-cta button{min-height:52px;padding:0 26px;border:0;border-radius:9px;background:var(--green);color:#fff;font-size:16px;font-weight:800;cursor:pointer}
+@media(max-width:680px){.expense-empty-cta{padding:26px 16px}.expense-empty-cta p{font-size:15px}.expense-empty-cta button{width:100%}}
+.agenda-sheet-scrollwrap{position:relative}
+.sheet-scroll-more{position:absolute;top:10px;right:10px;z-index:9;pointer-events:none;background:rgba(20,62,48,.88);color:#fff;font-size:12px;font-weight:800;padding:6px 12px;border-radius:999px;box-shadow:0 4px 12px rgba(18,49,38,.25)}
+@media(max-width:800px){.sheet-scroll-more{display:none}}
+.document-head-actions button:disabled,.expense-export-actions button:disabled{opacity:.42;cursor:not-allowed}
