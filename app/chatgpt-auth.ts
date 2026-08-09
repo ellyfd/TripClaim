@@ -26,8 +26,9 @@ export async function getChatGPTUser(): Promise<ChatGPTUser | null> {
 
 async function getChatGPTIdentity(): Promise<ChatGPTUser | null> {
   const requestHeaders = await headers();
-  const email = requestHeaders.get(USER_EMAIL_HEADER);
-  if (!email) return null;
+  const rawEmail = requestHeaders.get(USER_EMAIL_HEADER);
+  if (!rawEmail) return null;
+  const email = rawEmail.trim().toLowerCase();
 
   const encodedFullName = requestHeaders.get(USER_FULL_NAME_HEADER);
   const fullName =
@@ -37,7 +38,7 @@ async function getChatGPTIdentity(): Promise<ChatGPTUser | null> {
       : null;
 
   return {
-    displayName: fullName ?? email,
+    displayName: email.split("@")[0],
     email,
     fullName,
   };
