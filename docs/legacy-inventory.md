@@ -6,7 +6,7 @@ This inventory distinguishes immutable company master data from transitional imp
 
 | Area | Current source | Risk | Target |
 | --- | --- | --- | --- |
-| Login-user administration | Resolved: roles are server-owned and returned by `/api/me` | Header only shows management to administrators; API mutations still enforce the role independently | Keep role changes authenticated, audited and protected against removing the final administrator |
+| Login-user administration | Resolved: roles are server-owned and returned by `/api/me` | The server-owned list gates every authenticated API; Header only shows management to administrators | Keep role changes authenticated, audited and protected against removing the final administrator |
 
 ## P1 — remove after route migration
 
