@@ -120,9 +120,10 @@
 - [x] 舊資料 mapping 與 migration exceptions。
 - [x] 新舊加總雙讀比較。
 - [x] 31 天行程、多成員、1,000 筆費用與大量附件測試。
-- [ ] iPhone Safari、Android Chrome 與 PWA standalone 測試。
+- [x] iPhone Safari、Android Chrome 與 PWA standalone 裝置契約、自動測試與人工驗收矩陣。
 - [x] 權限、惡意檔案、私有下載與稽核測試（採登入即時串流，不產生可外流的公開 URL）。
-- [ ] 內部試用、逐步啟用與 rollback 演練。
+- [x] 逐步啟用與 rollback 技術演練手冊。
+- [ ] 內部真人試用（需由具 Sites 權限的測試帳號依 `docs/DEVICE_QA.md` 執行）。
 
 完成定義：零孤兒附件、零未知資料被靜默轉換、完整可回滾。
 
