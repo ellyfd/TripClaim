@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {readFile} from "node:fs/promises";
 
 const read=path=>readFile(new URL(`../${path}`,import.meta.url),"utf8");
+const readStyles=async()=>`${await read("app/globals.css")}\n${await read("app/styles/legacy.css")}\n${await read("app/styles/product-shell.css")}`;
 
 test("personal trip resources require explicit trip context",async()=>{
  const routes=await Promise.all([
@@ -80,7 +81,7 @@ test("agenda defaults to business hours with pinned travel rows",async()=>{
 test("primary shell exposes one three-stage workflow and adaptive workbench",async()=>{
  const [page,styles]=await Promise.all([
   read("app/page.tsx"),
-  read("app/globals.css"),
+  readStyles(),
  ]);
  assert.match(page,/aria-label="主要流程"/);
  assert.match(page,/<i>1<\/i>我的出差/);
@@ -271,7 +272,7 @@ test("expense graphs use recoverable soft deletion with audit and restore",async
 test("expense workbench uses a desktop drawer and a mobile task order",async()=>{
  const [workbench,styles]=await Promise.all([
   read("app/ExpenseWizardLive.tsx"),
-  read("app/globals.css"),
+  readStyles(),
  ]);
  assert.match(workbench,/expense-drawer-trigger/);
  assert.match(workbench,/expense-drawer-backdrop/);
@@ -287,7 +288,7 @@ test("mobile itinerary is a focused today mode with persistent navigation",async
  const [agenda,page,styles]=await Promise.all([
   read("app/AgendaSheet.tsx"),
   read("app/page.tsx"),
-  read("app/globals.css"),
+  readStyles(),
  ]);
  assert.match(agenda,/todayIndex=visibleDates\.indexOf/);
  assert.match(agenda,/mobile-agenda-title">今日行程/);
@@ -302,7 +303,7 @@ test("mobile expenses prioritize today's tasks while desktop keeps full reportin
  const [overview,workbench,styles]=await Promise.all([
   read("app/MobileExpenseOverview.tsx"),
   read("app/ExpenseWizardLive.tsx"),
-  read("app/globals.css"),
+  readStyles(),
  ]);
  assert.match(overview,/>今日費用</);
  assert.match(overview,/>待確認</);
