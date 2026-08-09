@@ -12,6 +12,7 @@ button,summary,[role="button"]{touch-action:manipulation}
 .agenda-sheet-toolbar span,.agenda-sheet-tip,.document-head p,.expense-summary-head p{font-size:var(--font-xs)}
 .modal,.travel-dialog,.quick-booking-dialog,.trip-delete-dialog{border-radius:var(--radius-lg)}
 .dialog-x,.x{width:var(--control-h);height:var(--control-h);display:grid;place-items:center}
+.expense-real-list>article,.agenda-row{content-visibility:auto;contain-intrinsic-size:auto 64px}
 
 @media(min-width:1440px){
  .topbar-inner{width:min(var(--app-max),calc(100% - 64px))}
