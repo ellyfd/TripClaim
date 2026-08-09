@@ -14,7 +14,7 @@ export async function GET(request:NextRequest,{params}:{params:Promise<{id:strin
  if(!await requireTripMember(doc.tripId,user.email))return NextResponse.json({error:"forbidden"},{status:403});
  const {env}=await import("cloudflare:workers"); const object=await env.BUCKET.get(doc.objectKey); if(!object)return NextResponse.json({error:"content_missing"},{status:404});
  const download=request.nextUrl.searchParams.get("download")==="1",name=download?(doc.suggestedName||doc.originalName):doc.originalName;
- return new Response(object.body,{headers:{"content-type":doc.mimeType,"content-disposition":`${download?"attachment":"inline"}; filename*=UTF-8''${encodeURIComponent(name)}`,"cache-control":"private, no-store"}});
+ return new Response(object.body,{headers:{"content-type":doc.mimeType,"content-disposition":`${download?"attachment":"inline"}; filename*=UTF-8''${encodeURIComponent(name)}`,"cache-control":"private, no-store","x-content-type-options":"nosniff","content-security-policy":"sandbox; default-src 'none'"}});
 }
 
 export async function PATCH(request:NextRequest,{params}:{params:Promise<{id:string}>}){
