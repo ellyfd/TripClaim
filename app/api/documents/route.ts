@@ -9,6 +9,15 @@ import {MANAGED_AIRPORT_CODES,normalizeManagedAirportText} from "../../airport-d
 import {MASTER_DATA_VERSION} from "../../managed-config";
 import {validateExpenseMaster} from "../../master-data-validation";
 const allowed=new Set(["image/jpeg","image/png","image/webp","image/heic","image/heif","application/pdf"]);
+function hasAllowedSignature(bytes:ArrayBuffer,mime:string){
+ const b=new Uint8Array(bytes),ascii=(from:number,to:number)=>String.fromCharCode(...b.slice(from,to));
+ if(mime==="application/pdf")return ascii(0,5)==="%PDF-";
+ if(mime==="image/jpeg")return b[0]===0xff&&b[1]===0xd8&&b[2]===0xff;
+ if(mime==="image/png")return b[0]===0x89&&ascii(1,4)==="PNG"&&b[4]===0x0d&&b[5]===0x0a&&b[6]===0x1a&&b[7]===0x0a;
+ if(mime==="image/webp")return ascii(0,4)==="RIFF"&&ascii(8,12)==="WEBP";
+ if(mime==="image/heic"||mime==="image/heif")return ascii(4,8)==="ftyp"&&/^(?:heic|heix|hevc|hevx|heim|heis|mif1|msf1)$/.test(ascii(8,12));
+ return false;
+}
 
 const pad=(value:string|number)=>String(value).padStart(2,"0");
 const monthNumber=(value:string)=>pad(["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"].indexOf(value.toUpperCase())+1);
@@ -72,7 +81,7 @@ export async function POST(request:NextRequest){
  const data=await request.formData(),file=data.get("file"),requestedType=String(data.get("documentType")??"自動辨識"),tripId=String(data.get("tripId")??"");
  if(!tripId)return NextResponse.json({error:"trip_id_required"},{status:400});if(!await requireTripMember(tripId,user.email,{write:true}))return NextResponse.json({error:"forbidden"},{status:403});
  if(!(file instanceof File))return NextResponse.json({error:"file_required"},{status:400});if(!allowed.has(file.type))return NextResponse.json({error:"unsupported_file_type"},{status:415});if(file.size>15*1024*1024)return NextResponse.json({error:"file_too_large"},{status:413});
- const bytes=await file.arrayBuffer(),digest=await crypto.subtle.digest("SHA-256",bytes),contentHash=Array.from(new Uint8Array(digest)).map(x=>x.toString(16).padStart(2,"0")).join(""),db=await getDb(),[duplicate]=await db.select({id:uploadedDocuments.id,originalName:uploadedDocuments.originalName}).from(uploadedDocuments).where(and(eq(uploadedDocuments.ownerEmail,user.email),eq(uploadedDocuments.tripId,tripId),eq(uploadedDocuments.contentHash,contentHash))).limit(1);
+ const bytes=await file.arrayBuffer();if(!hasAllowedSignature(bytes,file.type))return NextResponse.json({error:"file_content_mismatch",message:"檔案內容與格式不一致，請重新拍照或輸出為 PDF／JPG／PNG 後上傳"},{status:415});const digest=await crypto.subtle.digest("SHA-256",bytes),contentHash=Array.from(new Uint8Array(digest)).map(x=>x.toString(16).padStart(2,"0")).join(""),db=await getDb(),[duplicate]=await db.select({id:uploadedDocuments.id,originalName:uploadedDocuments.originalName}).from(uploadedDocuments).where(and(eq(uploadedDocuments.ownerEmail,user.email),eq(uploadedDocuments.tripId,tripId),eq(uploadedDocuments.contentHash,contentHash))).limit(1);
  let extracted=String(data.get("ocrText")??"");if(file.type==="application/pdf"){try{const pdf=await getDocumentProxy(new Uint8Array(bytes));extracted=String((await extractText(pdf,{mergePages:true})).text??"")}catch{}}
  const documentType=inferDocumentType(extracted,file.name,requestedType),prefill=parseDocument(extracted,file.name,documentType),cardEvidence=documentType.includes("信用卡")||documentType.includes("刷卡"),feeEvidence=isForeignTransactionFee(extracted,file.name),claimType=documentType.includes("機票")?"機票(自行刷卡)":documentType.includes("住宿")?"住宿":documentType.includes("交通")?"車資":feeEvidence?"國外交易手續費":cardEvidence?null:"餐飲",master=validateExpenseMaster({claimType,originalCurrency:prefill.currency}),currencyDecision=master.currencyDecision;
  if(file.type==="application/pdf"&&!extracted.trim())prefill.warnings.unshift("PDF 沒有可讀文字層，可能是掃描檔；請確認日期、金額與地點");
