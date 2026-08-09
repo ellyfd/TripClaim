@@ -1,14 +1,14 @@
 import {NextRequest,NextResponse} from "next/server";
 import {eq} from "drizzle-orm";
 import {getChatGPTUser} from "../../chatgpt-auth";
-import {ensureUser} from "../../../db/access";
+import {ensureSystemRole} from "../../../db/access";
 import {userProfiles} from "../../../db/schema";
 
 export async function GET(){
  const user=await getChatGPTUser();
- if(!user)return NextResponse.json({displayName:"Elly Cheng",email:"elly@example.com",notificationEmail:"elly@example.com",fullName:"Elly Cheng"});
- const db=await ensureUser(user),[profile]=await db.select().from(userProfiles).where(eq(userProfiles.email,user.email)).limit(1);
- return NextResponse.json({...user,displayName:profile?.displayName??user.displayName,notificationEmail:profile?.notificationEmail??user.email});
+ if(!user)return NextResponse.json({displayName:"Elly Cheng",email:"elly@example.com",notificationEmail:"elly@example.com",fullName:"Elly Cheng",authenticated:false,role:null});
+ const {db,role}=await ensureSystemRole(user),[profile]=await db.select().from(userProfiles).where(eq(userProfiles.email,user.email)).limit(1);
+ return NextResponse.json({...user,authenticated:true,role,displayName:profile?.displayName??user.displayName,notificationEmail:profile?.notificationEmail??user.email});
 }
 
 export async function PATCH(request:NextRequest){
