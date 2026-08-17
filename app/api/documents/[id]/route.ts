@@ -4,7 +4,7 @@ import {getChatGPTUser} from "../../../chatgpt-auth";
 import {getDb} from "../../../../db";
 import {recordAudit,requireTripMember} from "../../../../db/access";
 import {hardDeleteOrderGraph} from "../../../../db/order-graph";
-import {personalExpenses,uploadedDocuments} from "../../../../db/schema";
+import {masterDataExceptions,personalExpenses,travelBookings,uploadedDocuments} from "../../../../db/schema";
 import {MASTER_DATA_VERSION} from "../../../managed-config";
 import {validateExpenseMaster} from "../../../master-data-validation";
 
@@ -46,11 +46,26 @@ export async function PATCH(request:NextRequest,{params}:{params:Promise<{id:str
  return NextResponse.json({saved:true,id});
 }
 
-export async function DELETE(_request:NextRequest,{params}:{params:Promise<{id:string}>}){
+export async function DELETE(request:NextRequest,{params}:{params:Promise<{id:string}>}){
  const user=await getChatGPTUser();if(!user)return NextResponse.json({error:"authentication_required"},{status:401});
  const {id}=await params,db=await getDb();const [doc]=await db.select().from(uploadedDocuments).where(and(eq(uploadedDocuments.id,id),eq(uploadedDocuments.ownerEmail,user.email))).limit(1);
  if(!doc)return NextResponse.json({error:"not_found"},{status:404});if(!await requireTripMember(doc.tripId,user.email,{write:true}))return NextResponse.json({error:"forbidden"},{status:403});
+ if(request.nextUrl.searchParams.get("discard")==="1"){
+  const [[booking],[expense]]=await Promise.all([
+   db.select({id:travelBookings.id}).from(travelBookings).where(and(eq(travelBookings.documentId,id),eq(travelBookings.tripId,doc.tripId),eq(travelBookings.ownerEmail,user.email))).limit(1),
+   db.select({id:personalExpenses.id}).from(personalExpenses).where(and(eq(personalExpenses.sourceDocumentId,id),eq(personalExpenses.tripId,doc.tripId),eq(personalExpenses.ownerEmail,user.email))).limit(1),
+  ]);
+  if(booking||expense||doc.confirmedAt)return NextResponse.json({error:"discard_not_allowed",message:"此文件已被正式資料使用，不能以草稿方式刪除"},{status:409});
+  await db.batch([
+   db.delete(masterDataExceptions).where(and(eq(masterDataExceptions.ownerEmail,user.email),eq(masterDataExceptions.sourceType,"uploaded_document"),eq(masterDataExceptions.sourceId,id))),
+   db.delete(uploadedDocuments).where(and(eq(uploadedDocuments.id,id),eq(uploadedDocuments.ownerEmail,user.email),eq(uploadedDocuments.tripId,doc.tripId))),
+  ]);
+  let objectDeleted=false,objectDeleteFailed=false;
+  try{const {env}=await import("cloudflare:workers");await env.BUCKET.delete(doc.objectKey);objectDeleted=true}catch{objectDeleteFailed=true}
+  await recordAudit({tripId:doc.tripId,actorEmail:user.email,entityType:"uploaded_document",entityId:id,action:"discard_unlinked_upload",before:{originalName:doc.originalName,documentType:doc.documentType,status:doc.status,contentHash:doc.contentHash},after:{objectDeleted,objectDeleteFailed}});
+  return NextResponse.json({discarded:true,exact:true,objectDeleted,objectDeleteFailed});
+ }
  const deleted=await hardDeleteOrderGraph({tripId:doc.tripId,ownerEmail:user.email,documentId:id});
- await recordAudit({tripId:doc.tripId,actorEmail:user.email,entityType:"uploaded_document",entityId:id,action:"hard_delete_order_graph",before:{originalName:doc.originalName,documentType:doc.documentType,status:doc.status},after:{bookingIds:deleted.bookingIds,objectDeleted:deleted.objectDeleted}});
- return NextResponse.json({deleted:true,permanent:true,bookingsDeleted:deleted.bookingIds.length,documentDeleted:true,objectDeleted:deleted.objectDeleted});
+ await recordAudit({tripId:doc.tripId,actorEmail:user.email,entityType:"uploaded_document",entityId:id,action:"hard_delete_order_graph",before:{originalName:doc.originalName,documentType:doc.documentType,status:doc.status},after:{bookingIds:deleted.bookingIds,documentIds:deleted.documentIds,duplicateDocumentsDeleted:deleted.duplicateDocumentsDeleted,objectDeleted:deleted.objectDeleted,objectDeleteFailures:deleted.objectDeleteFailures}});
+ return NextResponse.json({deleted:true,permanent:true,bookingsDeleted:deleted.bookingIds.length,documentDeleted:true,documentsDeleted:deleted.documentIds.length,duplicateDocumentsDeleted:deleted.duplicateDocumentsDeleted,objectDeleted:deleted.objectDeleted,objectDeleteFailures:deleted.objectDeleteFailures});
 }
