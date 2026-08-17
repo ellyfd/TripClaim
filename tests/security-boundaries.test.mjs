@@ -40,7 +40,7 @@ test("personal document and expense mutations verify ownership and membership",a
  }
 });
 
-test("managed airport directory drives ticket parsing",async()=>{
+test("managed airport directory drives ticket parsing and fresh uploads never reuse an old document",async()=>{
  const [route,directoryRaw]=await Promise.all([
   read("app/api/documents/route.ts"),
   read("db/managed-airports.json"),
@@ -51,21 +51,25 @@ test("managed airport directory drives ticket parsing",async()=>{
  assert.ok(airports.some(x=>x.code==="TPE"&&x.aliases.includes("TAIPEI TAIWAN TAOYUAN INTL")));
  assert.match(route,/normalizeManagedAirportText/);
  assert.match(route,/MANAGED_AIRPORT_CODES/);
- assert.ok(route.indexOf('if(duplicate)return')>route.indexOf('prefill=parseDocument'));
+ assert.doesNotMatch(route,/duplicate_document|if\(duplicate\)return/);
+ assert.match(route,/contentHash/);
 });
 
-test("deleting an expense soft-deletes its evidence and linked itinerary",async()=>{
+test("non-travel expense deletion keeps recoverable evidence behavior",async()=>{
  const source=await read("app/api/expenses/[id]/route.ts");
  assert.match(source,/uploadedDocuments/);
  assert.match(source,/travelBookings/);
  assert.match(source,/agendaItems/);
  assert.match(source,/soft_delete_graph/);
+ assert.match(source,/recoverable:true/);
 });
 
-test("deleting a legacy linked document cannot deadlock",async()=>{
+test("deleting a linked travel document permanently deletes its whole order graph",async()=>{
  const source=await read("app/api/documents/[id]/route.ts");
+ assert.match(source,/hardDeleteOrderGraph/);
  assert.match(source,/bookingsDeleted/);
- assert.match(source,/agendaItems/);
+ assert.match(source,/permanent:true/);
+ assert.doesNotMatch(source,/recoverable:true/);
  assert.doesNotMatch(source,/document_in_use/);
 });
 
@@ -93,15 +97,19 @@ test("primary shell exposes one three-stage workflow and adaptive workbench",asy
  assert.match(styles,/safe-area-inset-bottom/);
 });
 
-test("deleting a booking cascades to expense and orphaned attachment",async()=>{
- const [panel,route]=await Promise.all([
+test("deleting any booking deletes the complete order permanently",async()=>{
+ const [panel,route,graph]=await Promise.all([
   read("app/BookingPanel.tsx"),
   read("app/api/trips/[id]/bookings/[bookingId]/route.ts"),
+  read("db/order-graph.ts"),
  ]);
- assert.doesNotMatch(panel,/keepExpense=true/);
- assert.match(route,/attachmentDeleted/);
- assert.match(route,/uploadedDocuments/);
- assert.match(route,/sourceBookingId/);
+ assert.match(panel,/永久刪除整張訂單/);
+ assert.match(route,/hardDeleteOrderGraph/);
+ assert.match(route,/permanent:true/);
+ assert.doesNotMatch(route,/recoverable:true/);
+ assert.match(graph,/sourceBookingId/);
+ assert.match(graph,/uploadedDocuments/);
+ assert.match(graph,/BUCKET\.delete/);
 });
 
 test("document extraction preserves AI evidence and human confirmation",async()=>{
@@ -126,6 +134,24 @@ test("manual flight registration starts with outbound and return segments",async
  assert.match(source,/(?:next|base)==="flight"\?\[blankLeg\(\),blankLeg\(\)\]/);
  assert.match(source,/來回票只建立一筆本人報支/);
  assert.match(source,/新增轉機航段/);
+});
+
+test("confirm sync replaces the old travel order instead of appending or reusing",async()=>{
+ const [todo,replace,upload]=await Promise.all([
+  read("app/TripTodoPanel.tsx"),
+  read("app/api/trips/[id]/bookings/replace/route.ts"),
+  read("app/api/documents/route.ts"),
+ ]);
+ assert.match(todo,/\/bookings\/replace/);
+ assert.doesNotMatch(todo,/reusable|已載入既有文件/);
+ assert.match(replace,/hardDeleteOrderGraph/);
+ assert.match(replace,/replace_order_graph/);
+ assert.match(replace,/replacedOrders/);
+ assert.match(replace,/const now=new Date\(\)\.toISOString\(\),bookedAt=input\.bookedAt\?\?now/);
+ assert.match(upload,/requested==="flight"\)return "機票"/);
+ assert.match(upload,/requested==="stay"\)return "住宿"/);
+ assert.match(upload,/T15:00/);
+ assert.match(upload,/T11:00/);
 });
 
 test("unknown currencies preserve the original and require TWD reporting",async()=>{
@@ -261,12 +287,14 @@ test("card statement evidence saves TWD billing and links only to owned candidat
  assert.match(inbox,/CardEvidenceMatcher/);assert.match(inbox,/系統不會自行猜測/);
 });
 
-test("expense graphs use recoverable soft deletion with audit and restore",async()=>{
- const [schema,migration,documents,expenses,bookings,restore,inbox,summary]=await Promise.all([read("db/schema.ts"),read("drizzle/0020_recoverable_deletions.sql"),read("app/api/documents/[id]/route.ts"),read("app/api/expenses/[id]/route.ts"),read("app/api/trips/[id]/bookings/[bookingId]/route.ts"),read("app/api/trash/[kind]/[id]/route.ts"),read("app/DocumentInbox.tsx"),read("app/ExpenseSummary.tsx")]);
+test("travel graphs are permanent while ordinary expenses keep recoverable deletion",async()=>{
+ const [schema,migration,documents,expenses,bookings,graph,restore,inbox,summary]=await Promise.all([read("db/schema.ts"),read("drizzle/0020_recoverable_deletions.sql"),read("app/api/documents/[id]/route.ts"),read("app/api/expenses/[id]/route.ts"),read("app/api/trips/[id]/bookings/[bookingId]/route.ts"),read("db/order-graph.ts"),read("app/api/trash/[kind]/[id]/route.ts"),read("app/DocumentInbox.tsx"),read("app/ExpenseSummary.tsx")]);
  for(const source of [schema,migration])assert.match(source,/deleted_at|deletedAt/);
- for(const source of [documents,expenses,bookings]){assert.match(source,/soft_delete_graph/);assert.match(source,/recoverable:true/);assert.doesNotMatch(source,/BUCKET\.delete/)}
+ for(const source of [documents,bookings]){assert.match(source,/hardDeleteOrderGraph/);assert.match(source,/permanent:true/);assert.doesNotMatch(source,/recoverable:true/)}
+ assert.match(expenses,/hardDeleteOrderGraph/);assert.match(expenses,/soft_delete_graph/);assert.match(expenses,/recoverable:true/);
+ assert.match(graph,/BUCKET\.delete/);assert.match(graph,/db\.delete\(travelBookings\)/);assert.match(graph,/db\.delete\(uploadedDocuments\)/);
  assert.match(restore,/restore_graph/);assert.match(restore,/db\.batch\(writes\)/);assert.match(restore,/ownerEmail,user\.email/);
- assert.match(inbox,/>復原</);assert.match(summary,/立即復原/);
+ assert.doesNotMatch(inbox,/>復原</);assert.match(inbox,/無法復原/);assert.match(summary,/立即復原/);assert.match(summary,/永久刪除/);
 });
 
 test("expense workbench uses a desktop drawer and a mobile task order",async()=>{
