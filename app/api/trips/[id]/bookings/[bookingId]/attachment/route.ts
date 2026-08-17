@@ -1,2 +1,20 @@
-import {NextRequest,NextResponse} from "next/server";import {and,eq} from "drizzle-orm";import {getChatGPTUser} from "../../../../../../chatgpt-auth";import {getDb} from "../../../../../../../db";import {requireTripMember} from "../../../../../../../db/access";import {travelBookings,uploadedDocuments} from "../../../../../../../db/schema";
-export async function GET(_:NextRequest,{params}:{params:Promise<{id:string;bookingId:string}>}){const user=await getChatGPTUser(),{id,bookingId}=await params;if(!user)return NextResponse.json({error:"authentication_required"},{status:401});if(!await requireTripMember(id,user.email))return NextResponse.json({error:"forbidden"},{status:403});const db=await getDb();const [booking]=await db.select().from(travelBookings).where(and(eq(travelBookings.id,bookingId),eq(travelBookings.tripId,id))).limit(1);if(!booking?.documentId)return NextResponse.json({error:"not_found"},{status:404});const [doc]=await db.select().from(uploadedDocuments).where(eq(uploadedDocuments.id,booking.documentId)).limit(1);if(!doc)return NextResponse.json({error:"not_found"},{status:404});const {env}=await import("cloudflare:workers");const object=await env.BUCKET.get(doc.objectKey);if(!object)return NextResponse.json({error:"content_missing"},{status:404});return new Response(object.body,{headers:{"content-type":doc.mimeType,"content-disposition":`inline; filename*=UTF-8''${encodeURIComponent(doc.originalName)}`,"cache-control":"private, no-store"}})}
+import {NextRequest,NextResponse} from "next/server";
+import {and,eq,isNull} from "drizzle-orm";
+import {getChatGPTUser} from "../../../../../../chatgpt-auth";
+import {getDb} from "../../../../../../../db";
+import {requireTripMember} from "../../../../../../../db/access";
+import {travelBookings,uploadedDocuments} from "../../../../../../../db/schema";
+
+export async function GET(_:NextRequest,{params}:{params:Promise<{id:string;bookingId:string}>}){
+ const user=await getChatGPTUser(),{id,bookingId}=await params;
+ if(!user)return NextResponse.json({error:"authentication_required"},{status:401});
+ if(!await requireTripMember(id,user.email))return NextResponse.json({error:"forbidden"},{status:403});
+ const db=await getDb();
+ const [booking]=await db.select().from(travelBookings).where(and(eq(travelBookings.id,bookingId),eq(travelBookings.tripId,id),isNull(travelBookings.deletedAt))).limit(1);
+ if(!booking?.documentId)return NextResponse.json({error:"not_found"},{status:404});
+ const [doc]=await db.select().from(uploadedDocuments).where(and(eq(uploadedDocuments.id,booking.documentId),eq(uploadedDocuments.tripId,id),eq(uploadedDocuments.ownerEmail,booking.ownerEmail),isNull(uploadedDocuments.deletedAt))).limit(1);
+ if(!doc)return NextResponse.json({error:"not_found"},{status:404});
+ const {env}=await import("cloudflare:workers");const object=await env.BUCKET.get(doc.objectKey);
+ if(!object)return NextResponse.json({error:"content_missing"},{status:404});
+ return new Response(object.body,{headers:{"content-type":doc.mimeType,"content-disposition":`inline; filename*=UTF-8''${encodeURIComponent(doc.originalName)}`,"cache-control":"private, no-store","x-content-type-options":"nosniff","content-security-policy":"sandbox; default-src 'none'"}});
+}
