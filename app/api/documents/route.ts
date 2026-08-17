@@ -27,6 +27,12 @@ function compactDate(value:string){
  const year=match[3].length===2?`20${match[3]}`:match[3];
  return `${year}-${monthNumber(match[2])}-${pad(match[1])}`;
 }
+function normalizedDate(value?:string|null){
+ if(!value)return null;
+ const word=compactDate(value);if(word)return word;
+ const match=value.match(/\b(20\d{2})[\/.-](\d{1,2})[\/.-](\d{1,2})\b/);
+ return match?`${match[1]}-${pad(match[2])}-${pad(match[3])}`:null;
+}
 function inferDocumentType(text:string,fileName:string,requested:string){
  if(requested==="flight")return "機票";
  if(requested==="stay")return "住宿";
@@ -64,16 +70,34 @@ function parseDocument(text:string,fileName:string,kind:string){
   const duration=details.match(/(?:Duration|飛行時間)\s*[:：]?\s*(\d{1,2}:\d{2})/i)?.[1]??null;
   return [{title:`${match[3]}${match[4]} ${match[1]} → ${match[2]}`,startAt:`${segmentDates[0]}T${match[5].replace(".",":")}`,endAt:`${segmentDates[1]}T${match[6].replace(".",":")}`,origin:match[1],destination:match[2],duration}];
  });
+ // EVA 等電子機票常把 terminal 放在機場與日期之間；以航班號＋時間＋日期為第二錨點。
+ const MONTHS="(?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)";
+ const anchored=[...source.matchAll(new RegExp(String.raw`\b([A-Z]{2})\s?(\d{2,4})\s+([0-2]?\d[:.]\d{2})\s+(\d{1,2}${MONTHS}\d{2,4})\s+([0-2]?\d[:.]\d{2})\s+(\d{1,2}${MONTHS}\d{2,4})\b`,"gi"))].flatMap(match=>{
+  const before=source.slice(Math.max(0,(match.index??0)-220),match.index).toUpperCase();
+  const codes=[...before.matchAll(/\b([A-Z]{3})\b/g)].map(x=>x[1]).filter(code=>MANAGED_AIRPORT_CODES.has(code));
+  const origin=codes.at(-2),destination=codes.at(-1);
+  if(!origin||!destination||origin===destination)return [];
+  const startDate=compactDate(match[4]),endDate=compactDate(match[6]);
+  if(!startDate||!endDate)return [];
+  return [{title:`${match[1].toUpperCase()}${match[2]} ${origin} → ${destination}`,startAt:`${startDate}T${match[3].replace(".",":")}`,endAt:`${endDate}T${match[5].replace(".",":")}`,origin,destination,duration:null as string|null}];
+ });
+ const allSegments=[...segments,...anchored].filter((segment,index,array)=>array.findIndex(item=>item.title===segment.title&&item.startAt===segment.startAt&&item.endAt===segment.endAt)===index).sort((a,b)=>a.startAt.localeCompare(b.startAt));
  const hotel=source.match(/(?:HOTEL|住宿|PROPERTY|飯店)\s*[:：-]?\s*([A-Z0-9][A-Z0-9 '&.,-]{3,55})/i);
- const primarySegment=segments[0],stayStart=isStay&&dates[0]?`${dates[0]}T15:00`:null,stayEnd=isStay&&dates[1]?`${dates[1]}T11:00`:null;
- const resolvedStart=primarySegment?.startAt??times[0]??stayStart,resolvedEnd=primarySegment?.endAt??times[1]??stayEnd;
+ const stayDateToken=String.raw`(20\d{2}[\/.-]\d{1,2}[\/.-]\d{1,2}|\d{1,2}${MONTHS}\d{2,4})`;
+ const checkInRaw=source.match(new RegExp(String.raw`(?:CHECK[- ]?IN|入住).{0,45}?${stayDateToken}`,"i"))?.[1]??null;
+ const checkOutRaw=source.match(new RegExp(String.raw`(?:CHECK[- ]?OUT|退房).{0,45}?${stayDateToken}`,"i"))?.[1]??null;
+ const stayStartDate=normalizedDate(checkInRaw)??dates[0]??null;
+ const stayEndDate=normalizedDate(checkOutRaw)??dates.find(date=>date!==stayStartDate)??dates[1]??null;
+ const stayStart=stayStartDate?`${stayStartDate}T15:00`:null,stayEnd=stayEndDate?`${stayEndDate}T11:00`:null;
+ const primarySegment=allSegments[0];
+ const resolvedStart=isStay?(stayStart??times[0]??null):(primarySegment?.startAt??times[0]??null),resolvedEnd=isStay?(stayEnd??times[1]??null):(primarySegment?.endAt??times[1]??null);
  const title=isFlight?(primarySegment?.title||(flight?`${flight[1]}${flight[2]}${airports.length>=2?` ${airports[0]} → ${airports[1]}`:""}`:"機票・請確認航班名稱")):(hotel?.[1]?.trim()||fileName.replace(/\.[^.]+$/,""));
  const confidence={title:Boolean(primarySegment||flight||hotel),date:Boolean(resolvedStart),times:Boolean(resolvedStart&&resolvedEnd),route:Boolean(primarySegment||airports.length>=2),amount:Boolean(money),textDetected:text.trim().length>20};
  const isTravel=isFlight||isStay;
  const checks=isTravel?[confidence.title,confidence.times,confidence.amount,isFlight?confidence.route:true]:[confidence.textDetected,confidence.date,confidence.amount,Boolean(money?.[1])];
  const score=Math.round(checks.filter(Boolean).length/checks.length*100);
  const warnings=[!confidence.textDetected?"圖片文字尚未成功讀取":null,!confidence.date?"找不到消費日期":null,!confidence.amount?"找不到金額":null,!money?.[1]?"找不到幣別":null,isTravel&&!confidence.title?"名稱辨識信心較低":null,isFlight&&!confidence.route?"找不到完整起訖地":null].filter(Boolean) as string[];
- return {title,startAt:resolvedStart,endAt:resolvedEnd,origin:primarySegment?.origin??airports[0]??null,destination:primarySegment?.destination??airports[1]??null,segments,currency:money?.[1]?.toUpperCase()==="NTD"?"TWD":money?.[1]?.toUpperCase()??null,amount:money?money[2].replaceAll(",",""):null,confidence,textDetected:confidence.textDetected,score,warnings,sourceExcerpt:text.trim().replace(/\s+/g," ").slice(0,280)};
+ return {title,startAt:resolvedStart,endAt:resolvedEnd,origin:isFlight?(primarySegment?.origin??airports[0]??null):null,destination:isFlight?(primarySegment?.destination??airports[1]??null):null,segments:allSegments,currency:money?.[1]?.toUpperCase()==="NTD"?"TWD":money?.[1]?.toUpperCase()??null,amount:money?money[2].replaceAll(",",""):null,confidence,textDetected:confidence.textDetected,score,warnings,sourceExcerpt:text.trim().replace(/\s+/g," ").slice(0,280)};
 }
 
 export async function GET(request:NextRequest){
