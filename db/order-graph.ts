@@ -43,8 +43,8 @@ export async function hardDeleteOrderGraph(input:DeleteOrderGraphInput){
   writes.push(db.delete(uploadedDocuments).where(and(eq(uploadedDocuments.ownerEmail,input.ownerEmail),eq(uploadedDocuments.tripId,input.tripId),inArray(uploadedDocuments.id,documentIds))));
  }
  if(writes.length)await db.batch(writes);
- // Formal graph data is already atomically removed. Now delete backing objects with bounded retries;
- // any remaining keys are returned to callers so audit logs can retain a durable cleanup trace.
+ // Formal graph data is already atomically removed. Backing env.BUCKET.delete calls are delegated
+ // to deleteObjectKeysWithRetry so transient storage failures get bounded retries after DB success.
  const objectCleanup=await deleteObjectKeysWithRetry(documents.map(document=>document.objectKey));
  return {found:Boolean(seed||primaryDocument),bookingIds,documentId,documentIds,duplicateDocumentsDeleted:Math.max(0,documentIds.length-1),objectDeleted:objectCleanup.objectsDeleted>0,objectDeleteFailed:objectCleanup.objectDeleteFailures>0,objectsDeleted:objectCleanup.objectsDeleted,objectDeleteFailures:objectCleanup.objectDeleteFailures,failedObjectKeys:objectCleanup.failedObjectKeys,objectDeleteAttempts:objectCleanup.attemptsUsed};
 }
