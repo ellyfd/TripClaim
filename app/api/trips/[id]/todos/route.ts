@@ -1,5 +1,5 @@
 import {NextRequest,NextResponse} from "next/server";
-import {and,eq} from "drizzle-orm";
+import {and,eq,isNull} from "drizzle-orm";
 import {getChatGPTUser} from "../../../../chatgpt-auth";
 import {getDb} from "../../../../../db";
 import {requireTripMember} from "../../../../../db/access";
@@ -16,17 +16,17 @@ export async function GET(_:NextRequest,{params}:{params:Promise<{id:string}>}){
  const [members,todos,bookings,documents,requests]=await Promise.all([
   db.select({userEmail:tripMembers.userEmail,role:tripMembers.role}).from(tripMembers).where(eq(tripMembers.tripId,id)),
   db.select().from(tripMemberTodos).where(eq(tripMemberTodos.tripId,id)),
-  db.select({ownerEmail:travelBookings.ownerEmail,kind:travelBookings.kind,deletedAt:travelBookings.deletedAt}).from(travelBookings).where(eq(travelBookings.tripId,id)),
-  db.select({ownerEmail:uploadedDocuments.ownerEmail,documentType:uploadedDocuments.documentType,status:uploadedDocuments.status}).from(uploadedDocuments).where(eq(uploadedDocuments.tripId,id)),
+  db.select({ownerEmail:travelBookings.ownerEmail,kind:travelBookings.kind}).from(travelBookings).where(and(eq(travelBookings.tripId,id),isNull(travelBookings.deletedAt))),
+  db.select({ownerEmail:uploadedDocuments.ownerEmail,documentType:uploadedDocuments.documentType,status:uploadedDocuments.status}).from(uploadedDocuments).where(and(eq(uploadedDocuments.tripId,id),isNull(uploadedDocuments.deletedAt))),
   db.select({confirmedByEmail:travelRequests.confirmedByEmail,status:travelRequests.status}).from(travelRequests).where(eq(travelRequests.tripId,id))
  ]);
  const evidence=(email:string,key:ItemKey)=>{
-  if(key==="flight")return bookings.some(x=>x.ownerEmail===email&&x.kind==="flight"&&!x.deletedAt)||documents.some(x=>x.ownerEmail===email&&["flight","機票"].some(term=>x.documentType.toLowerCase().includes(term)));
-  if(key==="stay")return bookings.some(x=>x.ownerEmail===email&&x.kind==="stay"&&!x.deletedAt)||documents.some(x=>x.ownerEmail===email&&["stay","住宿"].some(term=>x.documentType.toLowerCase().includes(term)));
+  if(key==="flight")return bookings.some(x=>x.ownerEmail===email&&x.kind==="flight");
+  if(key==="stay")return bookings.some(x=>x.ownerEmail===email&&x.kind==="stay");
   if(key==="travel_request")return requests.some(x=>x.confirmedByEmail===email&&x.status==="confirmed");
   return documents.some(x=>x.ownerEmail===email&&["網路","esim","sim"].some(term=>x.documentType.toLowerCase().includes(term)));
  };
- return NextResponse.json({currentUserEmail:user.email,members:members.map(member=>{const values=itemKeys.map(key=>{const override=todos.find(todo=>todo.userEmail===member.userEmail&&todo.itemKey===key);return[key,override?{checked:override.checked,source:"manual"}:{checked:evidence(member.userEmail,key),source:evidence(member.userEmail,key)?"system":null}]});return{...member,items:Object.fromEntries(values)}})});
+ return NextResponse.json({currentUserEmail:user.email,members:members.map(member=>{const values=itemKeys.map(key=>{const override=todos.find(todo=>todo.userEmail===member.userEmail&&todo.itemKey===key);const systemEvidence=evidence(member.userEmail,key);return[key,override?{checked:override.checked,source:"manual"}:{checked:systemEvidence,source:systemEvidence?"system":null}]});return{...member,items:Object.fromEntries(values)}})});
 }
 
 export async function PATCH(request:NextRequest,{params}:{params:Promise<{id:string}>}){
