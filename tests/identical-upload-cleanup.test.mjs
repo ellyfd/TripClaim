@@ -16,14 +16,15 @@ test("order deletion expands one uploaded document to all byte-identical legacy 
  assert.match(source,/inArray\(uploadedDocuments\.id,documentIds\)/);
 });
 
-test("identical-copy cleanup removes every backing object only after database cleanup",async()=>{
+test("identical-copy cleanup starts backing-object retry only after database cleanup",async()=>{
  const source=await read("db/order-graph.ts");
  const batchIndex=source.indexOf("await db.batch(writes)");
- const bucketIndex=source.indexOf("env.BUCKET.delete(document.objectKey)");
- assert.ok(batchIndex>=0&&bucketIndex>batchIndex);
- assert.match(source,/Promise\.allSettled\(documents\.map/);
+ const retryIndex=source.indexOf("await deleteObjectKeysWithRetry(documents.map");
+ assert.ok(batchIndex>=0&&retryIndex>batchIndex);
+ assert.match(source,/deleteObjectKeysWithRetry/);
  assert.match(source,/duplicateDocumentsDeleted:Math\.max\(0,documentIds\.length-1\)/);
- assert.match(source,/objectDeleteFailures/);
+ assert.match(source,/objectDeleteFailures:objectCleanup\.objectDeleteFailures/);
+ assert.match(source,/failedObjectKeys:objectCleanup\.failedObjectKeys/);
 });
 
 test("manual travel orders without documents still group only by kind and bookedAt",async()=>{
