@@ -3,6 +3,7 @@ import {and,eq,inArray,isNull} from "drizzle-orm";
 import {getChatGPTUser} from "../../../../../chatgpt-auth";
 import {getDb} from "../../../../../../db";
 import {recordAudit,requireTripMember} from "../../../../../../db/access";
+import {deleteObjectKeysWithRetry} from "../../../../../../db/object-storage";
 import {agendaItems,masterDataExceptions,personalExpenses,travelBookings,uploadedDocuments} from "../../../../../../db/schema";
 import {decideReportingCurrency,managedClaimTypeCode,MASTER_DATA_VERSION} from "../../../../../managed-config";
 
@@ -66,8 +67,7 @@ export async function POST(request:NextRequest,{params}:{params:Promise<{id:stri
  const expenseId=crypto.randomUUID(),first=legs[0];
  writes.push(db.insert(personalExpenses).values({id:expenseId,ownerEmail:user.email,tripId:id,sourceDocumentId:validatedDocument?.id,sourceBookingId:bookingIds[0],category,categoryCode:managedClaimTypeCode(category),merchant:first.title!.trim(),expenseDate:first.startAt!.slice(0,10),originalAmountMinor:input.amountMinor!,originalCurrency,reportingAmountMinor:decision.requiresTwd?null:input.amountMinor!,reportingCurrency:decision.reportingCurrency,currencyDecisionReason:decision.reason,amountMinor:decision.requiresTwd?0:input.amountMinor!,currency:decision.reportingCurrency,status:"review",masterDataVersion:MASTER_DATA_VERSION,createdAt:now,updatedAt:now}));
  await db.batch(writes);
- let objectDeleteFailures=0;
- if(oldDocuments.length){const {env}=await import("cloudflare:workers");const results=await Promise.allSettled(oldDocuments.map(doc=>env.BUCKET.delete(doc.objectKey)));objectDeleteFailures=results.filter(result=>result.status==="rejected").length;}
- await recordAudit({tripId:id,actorEmail:user.email,entityType:"travel_order",entityId:validatedDocument?.id??bookingIds[0],action:"replace_order_graph",before:{replacedGroups:[...replacedGroups],oldBookingIds,oldDocumentIds,oldExpenseIds},after:{kind:input.kind,bookingIds,agendaIds,expenseId,documentId:validatedDocument?.id,bookedAt,objectDeleteFailures}});
- return NextResponse.json({saved:true,replacedOrders:replacedGroups.size,bookingsCreated:bookingIds.length,bookingIds,agendaIds,expenseId,documentId:validatedDocument?.id,objectDeleteFailures},{status:201});
+ const objectCleanup=await deleteObjectKeysWithRetry(oldDocuments.map(doc=>doc.objectKey));
+ await recordAudit({tripId:id,actorEmail:user.email,entityType:"travel_order",entityId:validatedDocument?.id??bookingIds[0],action:"replace_order_graph",before:{replacedGroups:[...replacedGroups],oldBookingIds,oldDocumentIds,oldExpenseIds},after:{kind:input.kind,bookingIds,agendaIds,expenseId,documentId:validatedDocument?.id,bookedAt,objectDeleteFailures:objectCleanup.objectDeleteFailures,objectDeleteAttempts:objectCleanup.attemptsUsed,failedObjectKeys:objectCleanup.failedObjectKeys}});
+ return NextResponse.json({saved:true,replacedOrders:replacedGroups.size,bookingsCreated:bookingIds.length,bookingIds,agendaIds,expenseId,documentId:validatedDocument?.id,objectDeleteFailures:objectCleanup.objectDeleteFailures,objectDeleteAttempts:objectCleanup.attemptsUsed,cleanupPending:objectCleanup.objectDeleteFailures>0},{status:201});
 }
