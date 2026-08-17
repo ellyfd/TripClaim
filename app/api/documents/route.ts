@@ -28,6 +28,8 @@ function compactDate(value:string){
  return `${year}-${monthNumber(match[2])}-${pad(match[1])}`;
 }
 function inferDocumentType(text:string,fileName:string,requested:string){
+ if(requested==="flight")return "機票";
+ if(requested==="stay")return "住宿";
  if(requested&&requested!=="自動辨識")return requested;
  const source=`${text} ${fileName}`.toLowerCase();
  if(/credit card statement|信用卡帳單|帳單明細|statement/.test(source))return "信用卡帳單";
@@ -43,9 +45,13 @@ function isForeignTransactionFee(text:string,fileName:string){
 }
 function parseDocument(text:string,fileName:string,kind:string){
  const source=normalizeManagedAirportText(`${text}\n${fileName}`.replace(/\s+/g," "));
+ const isFlight=kind==="flight"||kind==="機票",isStay=kind==="stay"||kind==="住宿";
  const dateTimes=[...source.matchAll(/(20\d{2})[\/.-](\d{1,2})[\/.-](\d{1,2})\D{0,18}([0-2]?\d)[:.](\d{2})/g)].map(x=>`${x[1]}-${pad(x[2])}-${pad(x[3])}T${pad(x[4])}:${x[5]}`);
  const compactDates=[...source.matchAll(/\b(\d{1,2})(JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)(\d{2,4})\D{0,14}([0-2]?\d)[:.](\d{2})/gi)].map(x=>{const year=x[3].length===2?`20${x[3]}`:x[3];return `${year}-${monthNumber(x[2])}-${pad(x[1])}T${pad(x[4])}:${x[5]}`});
  const times=[...new Set([...dateTimes,...compactDates])].sort();
+ const isoDates=[...source.matchAll(/\b(20\d{2})[\/.-](\d{1,2})[\/.-](\d{1,2})\b/g)].map(x=>`${x[1]}-${pad(x[2])}-${pad(x[3])}`);
+ const wordDates=[...source.matchAll(/\b\d{1,2}(?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)\d{2,4}\b/gi)].map(x=>compactDate(x[0])).filter(Boolean) as string[];
+ const dates=[...new Set([...isoDates,...wordDates])].sort();
  const money=[...source.matchAll(/\b(TWD|NTD|EUR|USD|PLN|JPY|GBP)\s*[$€£]?\s*([\d,]+(?:\.\d{1,2})?)/gi)].at(-1);
  const flight=source.match(/\b([A-Z]{2})\s?(\d{2,4})\b/);
  const airports=[...source.matchAll(/\b([A-Z]{3})\b/g)].map(x=>x[1]).filter(code=>MANAGED_AIRPORT_CODES.has(code));
@@ -53,20 +59,21 @@ function parseDocument(text:string,fileName:string,kind:string){
  const segments=segmentHeaders.flatMap((match,index)=>{
   if(!MANAGED_AIRPORT_CODES.has(match[1])||!MANAGED_AIRPORT_CODES.has(match[2]))return [];
   const start=(match.index??0)+match[0].length,next=segmentHeaders[index+1]?.index??Math.min(source.length,start+700),details=source.slice(start,next);
-  const dates=[...details.matchAll(/\b\d{1,2}(?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)\d{2,4}\b/gi)].map(x=>compactDate(x[0])).filter(Boolean) as string[];
-  if(dates.length<2)return [];
+  const segmentDates=[...details.matchAll(/\b\d{1,2}(?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)\d{2,4}\b/gi)].map(x=>compactDate(x[0])).filter(Boolean) as string[];
+  if(segmentDates.length<2)return [];
   const duration=details.match(/(?:Duration|飛行時間)\s*[:：]?\s*(\d{1,2}:\d{2})/i)?.[1]??null;
-  return [{title:`${match[3]}${match[4]} ${match[1]} → ${match[2]}`,startAt:`${dates[0]}T${match[5].replace(".",":")}`,endAt:`${dates[1]}T${match[6].replace(".",":")}`,origin:match[1],destination:match[2],duration}];
+  return [{title:`${match[3]}${match[4]} ${match[1]} → ${match[2]}`,startAt:`${segmentDates[0]}T${match[5].replace(".",":")}`,endAt:`${segmentDates[1]}T${match[6].replace(".",":")}`,origin:match[1],destination:match[2],duration}];
  });
  const hotel=source.match(/(?:HOTEL|住宿|PROPERTY|飯店)\s*[:：-]?\s*([A-Z0-9][A-Z0-9 '&.,-]{3,55})/i);
- const primarySegment=segments[0];
- const title=kind==="flight"?(primarySegment?.title||(flight?`${flight[1]}${flight[2]}${airports.length>=2?` ${airports[0]} → ${airports[1]}`:""}`:"機票・請確認航班名稱")):(hotel?.[1]?.trim()||fileName.replace(/\.[^.]+$/,""));
- const confidence={title:Boolean(primarySegment||flight||hotel),date:Boolean(primarySegment||times.length>=1),times:Boolean(primarySegment||times.length>=2),route:Boolean(primarySegment||airports.length>=2),amount:Boolean(money),textDetected:text.trim().length>20};
- const isTravel=kind==="flight"||kind==="stay"||kind==="機票"||kind==="住宿";
- const checks=isTravel?[confidence.title,confidence.times,confidence.amount,kind==="flight"||kind==="機票"?confidence.route:true]:[confidence.textDetected,confidence.date,confidence.amount,Boolean(money?.[1])];
+ const primarySegment=segments[0],stayStart=isStay&&dates[0]?`${dates[0]}T15:00`:null,stayEnd=isStay&&dates[1]?`${dates[1]}T11:00`:null;
+ const resolvedStart=primarySegment?.startAt??times[0]??stayStart,resolvedEnd=primarySegment?.endAt??times[1]??stayEnd;
+ const title=isFlight?(primarySegment?.title||(flight?`${flight[1]}${flight[2]}${airports.length>=2?` ${airports[0]} → ${airports[1]}`:""}`:"機票・請確認航班名稱")):(hotel?.[1]?.trim()||fileName.replace(/\.[^.]+$/,""));
+ const confidence={title:Boolean(primarySegment||flight||hotel),date:Boolean(resolvedStart),times:Boolean(resolvedStart&&resolvedEnd),route:Boolean(primarySegment||airports.length>=2),amount:Boolean(money),textDetected:text.trim().length>20};
+ const isTravel=isFlight||isStay;
+ const checks=isTravel?[confidence.title,confidence.times,confidence.amount,isFlight?confidence.route:true]:[confidence.textDetected,confidence.date,confidence.amount,Boolean(money?.[1])];
  const score=Math.round(checks.filter(Boolean).length/checks.length*100);
- const warnings=[!confidence.textDetected?"圖片文字尚未成功讀取":null,!confidence.date?"找不到消費日期":null,!confidence.amount?"找不到金額":null,!money?.[1]?"找不到幣別":null,isTravel&&!confidence.title?"名稱辨識信心較低":null,(kind==="flight"||kind==="機票")&&!confidence.route?"找不到完整起訖地":null].filter(Boolean) as string[];
- return {title,startAt:primarySegment?.startAt??times[0]??null,endAt:primarySegment?.endAt??times[1]??null,origin:primarySegment?.origin??airports[0]??null,destination:primarySegment?.destination??airports[1]??null,segments,currency:money?.[1]?.toUpperCase()==="NTD"?"TWD":money?.[1]?.toUpperCase()??null,amount:money?money[2].replaceAll(",",""):null,confidence,textDetected:confidence.textDetected,score,warnings,sourceExcerpt:text.trim().replace(/\s+/g," ").slice(0,280)};
+ const warnings=[!confidence.textDetected?"圖片文字尚未成功讀取":null,!confidence.date?"找不到消費日期":null,!confidence.amount?"找不到金額":null,!money?.[1]?"找不到幣別":null,isTravel&&!confidence.title?"名稱辨識信心較低":null,isFlight&&!confidence.route?"找不到完整起訖地":null].filter(Boolean) as string[];
+ return {title,startAt:resolvedStart,endAt:resolvedEnd,origin:primarySegment?.origin??airports[0]??null,destination:primarySegment?.destination??airports[1]??null,segments,currency:money?.[1]?.toUpperCase()==="NTD"?"TWD":money?.[1]?.toUpperCase()??null,amount:money?money[2].replaceAll(",",""):null,confidence,textDetected:confidence.textDetected,score,warnings,sourceExcerpt:text.trim().replace(/\s+/g," ").slice(0,280)};
 }
 
 export async function GET(request:NextRequest){
@@ -81,14 +88,13 @@ export async function POST(request:NextRequest){
  const data=await request.formData(),file=data.get("file"),requestedType=String(data.get("documentType")??"自動辨識"),tripId=String(data.get("tripId")??"");
  if(!tripId)return NextResponse.json({error:"trip_id_required"},{status:400});if(!await requireTripMember(tripId,user.email,{write:true}))return NextResponse.json({error:"forbidden"},{status:403});
  if(!(file instanceof File))return NextResponse.json({error:"file_required"},{status:400});if(!allowed.has(file.type))return NextResponse.json({error:"unsupported_file_type"},{status:415});if(file.size>15*1024*1024)return NextResponse.json({error:"file_too_large"},{status:413});
- const bytes=await file.arrayBuffer();if(!hasAllowedSignature(bytes,file.type))return NextResponse.json({error:"file_content_mismatch",message:"檔案內容與格式不一致，請重新拍照或輸出為 PDF／JPG／PNG 後上傳"},{status:415});const digest=await crypto.subtle.digest("SHA-256",bytes),contentHash=Array.from(new Uint8Array(digest)).map(x=>x.toString(16).padStart(2,"0")).join(""),db=await getDb(),[duplicate]=await db.select({id:uploadedDocuments.id,originalName:uploadedDocuments.originalName}).from(uploadedDocuments).where(and(eq(uploadedDocuments.ownerEmail,user.email),eq(uploadedDocuments.tripId,tripId),eq(uploadedDocuments.contentHash,contentHash))).limit(1);
+ const bytes=await file.arrayBuffer();if(!hasAllowedSignature(bytes,file.type))return NextResponse.json({error:"file_content_mismatch",message:"檔案內容與格式不一致，請重新拍照或輸出為 PDF／JPG／PNG 後上傳"},{status:415});const digest=await crypto.subtle.digest("SHA-256",bytes),contentHash=Array.from(new Uint8Array(digest)).map(x=>x.toString(16).padStart(2,"0")).join(""),db=await getDb();
  let extracted=String(data.get("ocrText")??"");if(file.type==="application/pdf"){try{const pdf=await getDocumentProxy(new Uint8Array(bytes));extracted=String((await extractText(pdf,{mergePages:true})).text??"")}catch{}}
  const documentType=inferDocumentType(extracted,file.name,requestedType),prefill=parseDocument(extracted,file.name,documentType),cardEvidence=documentType.includes("信用卡")||documentType.includes("刷卡"),feeEvidence=isForeignTransactionFee(extracted,file.name),claimType=documentType.includes("機票")?"機票(自行刷卡)":documentType.includes("住宿")?"住宿":documentType.includes("交通")?"車資":feeEvidence?"國外交易手續費":cardEvidence?null:"餐飲",master=validateExpenseMaster({claimType,originalCurrency:prefill.currency}),currencyDecision=master.currencyDecision;
  if(file.type==="application/pdf"&&!extracted.trim())prefill.warnings.unshift("PDF 沒有可讀文字層，可能是掃描檔；請確認日期、金額與地點");
  if(currencyDecision.requiresTwd)prefill.warnings.push(`偵測到 ${currencyDecision.originalCurrency}；${currencyDecision.reason}`);
  if(cardEvidence&&!feeEvidence)prefill.warnings.push("此文件是付款證明，不會另建一筆消費；請配對既有費用");
  if(feeEvidence&&currencyDecision.originalCurrency!=="TWD")prefill.warnings.push("國外交易手續費只能以 TWD 報支，請填信用卡帳單上的台幣金額");
- if(duplicate)return NextResponse.json({error:"duplicate_document",existing:duplicate,documentType,confidence:prefill.score,warnings:prefill.warnings,prefill},{status:409});
  const id=crypto.randomUUID(),safeName=file.name.replace(/[^\p{L}\p{N}._-]+/gu,"-").slice(-120),objectKey=`users/${encodeURIComponent(user.email)}/${tripId}/${id}-${safeName}`,expenseDate=prefill.startAt?.slice(0,10)??null,amountMinor=prefill.amount?Math.round(Number(prefill.amount)*100):null;
  const {env}=await import("cloudflare:workers");await env.BUCKET.put(objectKey,bytes,{httpMetadata:{contentType:file.type},customMetadata:{owner:user.email,tripId,documentType}});
  const extractionCandidates={documentType,claimType,title:prefill.title,startAt:prefill.startAt,endAt:prefill.endAt,origin:prefill.origin,destination:prefill.destination,segments:prefill.segments,currency:currencyDecision.originalCurrency,amountMinor};
