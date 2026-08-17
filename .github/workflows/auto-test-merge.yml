@@ -1,5 +1,5 @@
 # 自動測試＋合併：
-#   建立 PR → npm test → 確認仍是同一版本 → Squash merge → 刪除分支
+#   建立 PR → npm test → 確認仍是同一版本 → Squash merge → best-effort 刪除分支
 #
 # 安全條件（缺一不合併）：
 #   - 只處理 ellyfd 建立的 PR
@@ -11,8 +11,9 @@
 #   - 掛 no-auto-merge 標籤的 PR 不合併（逃生口）
 #   - 只用 GitHub 內建 GITHUB_TOKEN，不用外部 App
 #
-# 注意：GITHUB_TOKEN 完成的合併不會觸發其他 workflow；
-#       Sites 網站發布仍需在 ChatGPT Sites 環境手動 checkpoint。
+# 注意：
+#   - 合併成功是硬性條件；合併後刪 branch 只是清理，GitHub API 暫時性 5xx 不應把已成功 merge 的 PR 標成 failure。
+#   - GITHUB_TOKEN 完成的合併不會觸發其他 workflow；Sites 網站發布仍需在 ChatGPT Sites 環境手動 checkpoint。
 
 name: Auto test & merge
 
@@ -60,6 +61,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           TESTED_SHA: ${{ github.event.pull_request.head.sha }}
+          HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}
         run: |
           # mergeable 需要 GitHub 背景計算，UNKNOWN 時稍候重查
           for attempt in 1 2 3 4 5; do
@@ -72,10 +74,20 @@ jobs:
             echo "::error::PR 與 main 有衝突，不自動合併。"
             exit 1
           fi
-          # --match-head-commit：測試後若有人再推 commit，GitHub 會拒絕這次合併
+
+          # --match-head-commit：測試後若有人再推 commit，GitHub 會拒絕這次合併。
+          # 不在這個命令使用 --delete-branch，避免 branch cleanup 的暫時性 API 5xx
+          # 把已完成、已測試的 merge 誤報成 failure。
           gh pr merge "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" \
-            --squash --delete-branch \
+            --squash \
             --match-head-commit "$TESTED_SHA"
+
+          # Branch cleanup 是合併後 housekeeping，不影響 merge 成功與否。
+          if git push origin --delete "$HEAD_BRANCH"; then
+            echo "Deleted merged branch: $HEAD_BRANCH"
+          else
+            echo "::warning::PR 已成功合併，但暫時無法刪除 branch $HEAD_BRANCH；保留 branch 不影響 main。"
+          fi
 
 # GitHub Pages 的部署改由 deploy-pages.yml 以 workflow_run 觸發：
 # 本 workflow（pull_request 情境）的 ref 是 refs/pull/N/merge，
