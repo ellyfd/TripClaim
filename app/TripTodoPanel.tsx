@@ -1,5 +1,5 @@
 "use client";
-import {useEffect,useRef,useState} from "react";
+import {useCallback,useEffect,useRef,useState} from "react";
 import {createPortal} from "react-dom";
 import {prepareImageForUpload,recognizeDocumentText} from "./client-document-processing";
 
@@ -14,7 +14,8 @@ const blankLeg=(title="")=>({title,startAt:"",endAt:"",origin:"",destination:"",
 export default function TripTodoPanel({tripId,onBookingSaved}:{tripId:string;onBookingSaved?:()=>void}){
  const [members,setMembers]=useState<Member[]>([]),[me,setMe]=useState(""),[saving,setSaving]=useState<ItemKey|null>(null);
  const [kind,setKind]=useState<"flight"|"stay"|null>(null),[busy,setBusy]=useState(false),[analyzing,setAnalyzing]=useState(false),[notice,setNotice]=useState(""),[form,setForm]=useState(empty),[segments,setSegments]=useState<FlightSegment[]>([]),[file,setFile]=useState<File|null>(null),[documentId,setDocumentId]=useState<string>();const fileRef=useRef<HTMLInputElement>(null);
- useEffect(()=>{fetch(`/api/trips/${tripId}/todos`).then(r=>r.ok?r.json():null).then(x=>{if(x){setMembers(x.members??[]);setMe(x.currentUserEmail??"")}}).catch(()=>{})},[tripId]);
+ const loadTodos=useCallback(async()=>{try{const r=await fetch(`/api/trips/${tripId}/todos`);if(!r.ok)return;const x=await r.json();setMembers(x.members??[]);setMe(x.currentUserEmail??"")}catch{}},[tripId]);
+ useEffect(()=>{void loadTodos();const reload=()=>void loadTodos();window.addEventListener("tripclaim:data-changed",reload);return()=>window.removeEventListener("tripclaim:data-changed",reload)},[loadTodos]);
  const toggle=async(key:ItemKey,checked:boolean)=>{const before=members.find(m=>m.userEmail===me)?.items[key];setMembers(v=>v.map(m=>m.userEmail===me?{...m,items:{...m.items,[key]:{checked,source:"manual"}}}:m));setSaving(key);const r=await fetch(`/api/trips/${tripId}/todos`,{method:"PATCH",headers:{"content-type":"application/json"},body:JSON.stringify({itemKey:key,checked})});if(!r.ok&&before)setMembers(v=>v.map(m=>m.userEmail===me?{...m,items:{...m.items,[key]:before}}:m));setSaving(null)};
  const discardDraft=async(id?:string)=>{if(!id)return true;try{const r=await fetch(`/api/documents/${id}?discard=1`,{method:"DELETE"});return r.ok||r.status===404||r.status===409}catch{return false}};
  const closeDraft=async()=>{if(busy||analyzing)return;const current=documentId;if(current&&!await discardDraft(current)){setNotice("無法清除未同步文件，請重試");return}setDocumentId(undefined);setFile(null);setKind(null);setNotice("")};
