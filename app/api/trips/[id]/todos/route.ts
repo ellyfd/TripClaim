@@ -7,6 +7,7 @@ import {travelBookings,travelRequests,tripMembers,tripMemberTodos,uploadedDocume
 
 const itemKeys=["flight","stay","travel_request","internet"] as const;
 type ItemKey=(typeof itemKeys)[number];
+const managedTravelKeys=new Set<ItemKey>(["flight","stay"]);
 
 export async function GET(_:NextRequest,{params}:{params:Promise<{id:string}>}){
  const user=await getChatGPTUser(),{id}=await params;
@@ -26,7 +27,7 @@ export async function GET(_:NextRequest,{params}:{params:Promise<{id:string}>}){
   if(key==="travel_request")return requests.some(x=>x.confirmedByEmail===email&&x.status==="confirmed");
   return documents.some(x=>x.ownerEmail===email&&["網路","esim","sim"].some(term=>x.documentType.toLowerCase().includes(term)));
  };
- return NextResponse.json({currentUserEmail:user.email,members:members.map(member=>{const values=itemKeys.map(key=>{const override=todos.find(todo=>todo.userEmail===member.userEmail&&todo.itemKey===key);const systemEvidence=evidence(member.userEmail,key);return[key,override?{checked:override.checked,source:"manual"}:{checked:systemEvidence,source:systemEvidence?"system":null}]});return{...member,items:Object.fromEntries(values)}})});
+ return NextResponse.json({currentUserEmail:user.email,members:members.map(member=>{const values=itemKeys.map(key=>{const systemEvidence=evidence(member.userEmail,key);if(managedTravelKeys.has(key))return[key,{checked:systemEvidence,source:systemEvidence?"system":null,managed:true}];const override=todos.find(todo=>todo.userEmail===member.userEmail&&todo.itemKey===key);return[key,override?{checked:override.checked,source:"manual",managed:false}:{checked:systemEvidence,source:systemEvidence?"system":null,managed:false}]});return{...member,items:Object.fromEntries(values)}})});
 }
 
 export async function PATCH(request:NextRequest,{params}:{params:Promise<{id:string}>}){
@@ -35,6 +36,7 @@ export async function PATCH(request:NextRequest,{params}:{params:Promise<{id:str
  if(!await requireTripMember(id,user.email,{write:true}))return NextResponse.json({error:"forbidden"},{status:403});
  const input=await request.json() as {itemKey?:ItemKey;checked?:boolean};
  if(!input.itemKey||!itemKeys.includes(input.itemKey)||typeof input.checked!=="boolean")return NextResponse.json({error:"invalid_todo"},{status:400});
+ if(managedTravelKeys.has(input.itemKey))return NextResponse.json({error:"managed_todo",message:"機票／住宿完成狀態由已同步訂單自動管理，不能手動勾選"},{status:409});
  const db=await getDb(),now=new Date().toISOString();
  const [existing]=await db.select({id:tripMemberTodos.id}).from(tripMemberTodos).where(and(eq(tripMemberTodos.tripId,id),eq(tripMemberTodos.userEmail,user.email),eq(tripMemberTodos.itemKey,input.itemKey))).limit(1);
  if(existing)await db.update(tripMemberTodos).set({checked:input.checked,updatedAt:now}).where(eq(tripMemberTodos.id,existing.id));
