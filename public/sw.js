@@ -2,6 +2,7 @@ const CACHE_NAME = "tripclaim-shell-v2";
 const OFFLINE_URL = "/offline";
 const UPLOAD_DB = "tripclaim-upload-queue";
 const UPLOAD_STORE = "requests";
+const TRAVEL_DOCUMENT_TYPES = new Set(["flight", "stay", "機票", "住宿"]);
 const APP_SHELL = [
   OFFLINE_URL,
   "/favicon.svg",
@@ -55,6 +56,8 @@ const saveUpload = async (request) => {
 
 const removeUpload = (id) => uploadStore("readwrite", (store) => store.delete(id));
 const queuedUploads = () => uploadStore("readonly", (store) => store.getAll());
+const uploadDocumentType = (formData) => String(formData?.get?.("documentType") ?? "").trim().toLowerCase();
+const isTravelReviewForm = (formData) => TRAVEL_DOCUMENT_TYPES.has(uploadDocumentType(formData));
 
 const flushUploads = async () => {
   const uploads = await queuedUploads();
@@ -72,6 +75,26 @@ const flushUploads = async () => {
 };
 
 const handleDocumentUpload = async (request) => {
+  const formData = await request.clone().formData();
+
+  // Travel review must return the server document id to the active review dialog.
+  // Background-retrying it would create an unattached document after the dialog has lost that id.
+  if (isTravelReviewForm(formData)) {
+    try {
+      return await fetch(request);
+    } catch {
+      return Response.json(
+        {
+          error: "travel_upload_requires_connection",
+          message: "機票／住宿需在線完成辨識與同步；恢復網路後請重新上傳。",
+          queued: false,
+        },
+        { status: 503 },
+      );
+    }
+  }
+
+  // Ordinary expense evidence remains offline-first.
   const id = await saveUpload(request);
   await notifyClients({ type: "tripclaim-upload-saved", id });
   try {
