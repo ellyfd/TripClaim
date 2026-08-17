@@ -74,6 +74,20 @@ const flushUploads = async () => {
   const uploads = await queuedUploads();
   for (const upload of uploads) {
     try {
+      // Older service-worker versions may already have queued flight/stay review requests.
+      // They no longer have an active review dialog that can receive the future document id,
+      // so never send them to the server: remove the queue item and require a deliberate re-upload.
+      if (isTravelReviewForm(upload.formData)) {
+        await removeUpload(upload.id);
+        await notifyClients({
+          type: "tripclaim-upload-rejected",
+          id: upload.id,
+          reason: "travel_review_retry_required",
+          message: "先前離線保存的機票／住宿尚未同步；請恢復網路後從「我的行前資料」重新上傳。",
+        });
+        continue;
+      }
+
       const response = await fetch(upload.url, { method: "POST", body: upload.formData, credentials: "include" });
       if (response.ok && isExpenseContext(upload.formData)) {
         const data = await response.clone().json().catch(() => null);
