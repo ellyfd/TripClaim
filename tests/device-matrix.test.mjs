@@ -6,7 +6,7 @@ const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), "utf
 
 test("iPhone Safari and standalone PWA metadata are complete", () => {
   const layout = read("app/layout.tsx");
-  const manifest = read("app/manifest.ts");
+  const manifest = read("app/manifest.webmanifest/route.ts");
   assert.match(layout, /width:\s*"device-width"/);
   assert.match(layout, /initialScale:\s*1/);
   assert.match(layout, /viewportFit:\s*"cover"/);
@@ -14,6 +14,7 @@ test("iPhone Safari and standalone PWA metadata are complete", () => {
   assert.match(manifest, /display:\s*"standalone"/);
   assert.match(manifest, /purpose:\s*"maskable"/);
   assert.match(manifest, /start_url:\s*"\/"/);
+  assert.match(manifest, /application\/manifest\+json/);
 });
 
 test("Android Chrome and offline upload contracts stay enabled", () => {
