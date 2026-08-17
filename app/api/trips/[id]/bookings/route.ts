@@ -4,6 +4,7 @@ import {getChatGPTUser} from "../../../../chatgpt-auth";
 import {getDb} from "../../../../../db";
 import {requireTripMember} from "../../../../../db/access";
 import {travelBookings} from "../../../../../db/schema";
+import {MASTER_DATA_VERSION} from "../../../../managed-config";
 
 export async function GET(_:NextRequest,{params}:{params:Promise<{id:string}>}){
  const user=await getChatGPTUser(),{id}=await params;
@@ -17,5 +18,5 @@ export async function POST(_:NextRequest,{params}:{params:Promise<{id:string}>})
  const user=await getChatGPTUser(),{id}=await params;
  if(!user)return NextResponse.json({error:"authentication_required"},{status:401});
  if(!await requireTripMember(id,user.email,{write:true}))return NextResponse.json({error:"forbidden"},{status:403});
- return NextResponse.json({error:"replace_required",message:"新增或更新機票／住宿必須使用整單 replace 流程，避免重複訂單與殘留行程",endpoint:`/api/trips/${id}/bookings/replace`},{status:409});
+ return NextResponse.json({error:"replace_required",message:"新增或更新機票／住宿必須使用整單 replace 流程，避免重複訂單與殘留行程",endpoint:`/api/trips/${id}/bookings/replace`,masterDataVersion:MASTER_DATA_VERSION},{status:409});
 }
