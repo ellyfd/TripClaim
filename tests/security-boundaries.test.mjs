@@ -136,7 +136,7 @@ test("manual flight registration starts with outbound and return segments",async
  assert.match(source,/新增轉機航段/);
 });
 
-test("confirm sync replaces the old travel order instead of appending or reusing",async()=>{
+test("confirm sync transactionally replaces old travel data instead of appending or reusing",async()=>{
  const [todo,replace,upload]=await Promise.all([
   read("app/TripTodoPanel.tsx"),
   read("app/api/trips/[id]/bookings/replace/route.ts"),
@@ -144,9 +144,12 @@ test("confirm sync replaces the old travel order instead of appending or reusing
  ]);
  assert.match(todo,/\/bookings\/replace/);
  assert.doesNotMatch(todo,/reusable|已載入既有文件/);
- assert.match(replace,/hardDeleteOrderGraph/);
+ assert.match(replace,/db\.delete\(travelBookings\)/);
+ assert.match(replace,/db\.delete\(uploadedDocuments\)/);
+ assert.match(replace,/await db\.batch\(writes\)/);
  assert.match(replace,/replace_order_graph/);
  assert.match(replace,/replacedOrders/);
+ assert.match(replace,/doc\.id!==input\.documentId/);
  assert.match(replace,/const now=new Date\(\)\.toISOString\(\),bookedAt=input\.bookedAt\?\?now/);
  assert.match(upload,/requested==="flight"\)return "機票"/);
  assert.match(upload,/requested==="stay"\)return "住宿"/);
