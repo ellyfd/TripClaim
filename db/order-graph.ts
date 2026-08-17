@@ -1,4 +1,4 @@
-import {and,eq,inArray} from "drizzle-orm";
+import {and,eq,inArray,or} from "drizzle-orm";
 import {getDb} from ".";
 import {agendaItems,masterDataExceptions,personalExpenses,travelBookings,uploadedDocuments} from "./schema";
 
@@ -10,7 +10,7 @@ export async function hardDeleteOrderGraph(input:DeleteOrderGraphInput){
  if(input.bookingId){
   const [found]=await db.select().from(travelBookings).where(and(eq(travelBookings.id,input.bookingId),eq(travelBookings.tripId,input.tripId),eq(travelBookings.ownerEmail,input.ownerEmail))).limit(1);
   seed=found??null;
-  if(!seed)return {found:false,bookingIds:[] as string[],documentId:null,objectDeleted:false};
+  if(!seed)return {found:false,bookingIds:[] as string[],documentId:null,objectDeleted:false,objectDeleteFailed:false};
  }
  const documentId=input.documentId??seed?.documentId??null;
  const bookings=documentId
@@ -19,9 +19,8 @@ export async function hardDeleteOrderGraph(input:DeleteOrderGraphInput){
    ?await db.select().from(travelBookings).where(and(eq(travelBookings.tripId,input.tripId),eq(travelBookings.ownerEmail,input.ownerEmail),eq(travelBookings.kind,seed.kind),eq(travelBookings.bookedAt,seed.bookedAt)))
    :[];
  const bookingIds=bookings.map(item=>item.id);
- const expenseRows=bookingIds.length||documentId
-  ?await db.select({id:personalExpenses.id}).from(personalExpenses).where(and(eq(personalExpenses.ownerEmail,input.ownerEmail),eq(personalExpenses.tripId,input.tripId),documentId?eq(personalExpenses.sourceDocumentId,documentId):inArray(personalExpenses.sourceBookingId,bookingIds)))
-  :[];
+ const expenseRelation=documentId&&bookingIds.length?or(eq(personalExpenses.sourceDocumentId,documentId),inArray(personalExpenses.sourceBookingId,bookingIds)):documentId?eq(personalExpenses.sourceDocumentId,documentId):bookingIds.length?inArray(personalExpenses.sourceBookingId,bookingIds):null;
+ const expenseRows=expenseRelation?await db.select({id:personalExpenses.id}).from(personalExpenses).where(and(eq(personalExpenses.ownerEmail,input.ownerEmail),eq(personalExpenses.tripId,input.tripId),expenseRelation)):[];
  const expenseIds=expenseRows.map(item=>item.id);
  const [document]=documentId?await db.select().from(uploadedDocuments).where(and(eq(uploadedDocuments.id,documentId),eq(uploadedDocuments.ownerEmail,input.ownerEmail),eq(uploadedDocuments.tripId,input.tripId))).limit(1):[];
  const writes=[];
@@ -37,11 +36,9 @@ export async function hardDeleteOrderGraph(input:DeleteOrderGraphInput){
   writes.push(db.delete(uploadedDocuments).where(and(eq(uploadedDocuments.id,documentId),eq(uploadedDocuments.ownerEmail,input.ownerEmail),eq(uploadedDocuments.tripId,input.tripId))));
  }
  if(writes.length)await db.batch(writes);
- let objectDeleted=false;
+ let objectDeleted=false,objectDeleteFailed=false;
  if(document?.objectKey){
-  const {env}=await import("cloudflare:workers");
-  await env.BUCKET.delete(document.objectKey);
-  objectDeleted=true;
+  try{const {env}=await import("cloudflare:workers");await env.BUCKET.delete(document.objectKey);objectDeleted=true}catch{objectDeleteFailed=true}
  }
- return {found:Boolean(seed||documentId),bookingIds,documentId,objectDeleted};
+ return {found:Boolean(seed||documentId),bookingIds,documentId,objectDeleted,objectDeleteFailed};
 }
