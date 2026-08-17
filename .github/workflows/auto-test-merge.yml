@@ -12,7 +12,8 @@
 #   - 只用 GitHub 內建 GITHUB_TOKEN，不用外部 App
 #
 # 注意：
-#   - 合併成功是硬性條件；合併後刪 branch 只是清理，GitHub API 暫時性 5xx 不應把已成功 merge 的 PR 標成 failure。
+#   - 合併成功是硬性條件；GitHub merge API 暫時性 5xx 會有限重試，但永遠保留 tested-head match。
+#   - 合併後刪 branch 只是清理，GitHub API 暫時性 5xx 不應把已成功 merge 的 PR 標成 failure。
 #   - GITHUB_TOKEN 完成的合併不會觸發其他 workflow；Sites 網站發布仍需在 ChatGPT Sites 環境手動 checkpoint。
 
 name: Auto test & merge
@@ -63,10 +64,15 @@ jobs:
           TESTED_SHA: ${{ github.event.pull_request.head.sha }}
           HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}
         run: |
-          # mergeable 需要 GitHub 背景計算，UNKNOWN 時稍候重查
+          # mergeable 需要 GitHub 背景計算；UNKNOWN 或暫時性 API 失敗時有限重查。
+          state="UNKNOWN"
           for attempt in 1 2 3 4 5; do
-            state=$(gh pr view "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --json mergeable -q .mergeable)
-            [ "$state" != "UNKNOWN" ] && break
+            if state=$(gh pr view "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --json mergeable -q .mergeable); then
+              [ "$state" != "UNKNOWN" ] && break
+            else
+              state="UNKNOWN"
+              echo "::warning::讀取 PR mergeable 狀態失敗（第 $attempt 次），將重試。"
+            fi
             sleep 5
           done
           echo "mergeable=$state"
@@ -74,13 +80,30 @@ jobs:
             echo "::error::PR 與 main 有衝突，不自動合併。"
             exit 1
           fi
+          if [ "$state" = "UNKNOWN" ]; then
+            echo "::error::無法確認 PR mergeable 狀態，停止合併。"
+            exit 1
+          fi
 
           # --match-head-commit：測試後若有人再推 commit，GitHub 會拒絕這次合併。
-          # 不在這個命令使用 --delete-branch，避免 branch cleanup 的暫時性 API 5xx
-          # 把已完成、已測試的 merge 誤報成 failure。
-          gh pr merge "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" \
-            --squash \
-            --match-head-commit "$TESTED_SHA"
+          # merge API 的暫時性 5xx 可以重試；tested head 不變，因此不降低版本安全性。
+          merged=false
+          for attempt in 1 2 3; do
+            if gh pr merge "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" \
+              --squash \
+              --match-head-commit "$TESTED_SHA"; then
+              merged=true
+              break
+            fi
+            if [ "$attempt" -lt 3 ]; then
+              echo "::warning::GitHub merge API 失敗（第 $attempt 次），將以同一 tested head 重試。"
+              sleep 5
+            fi
+          done
+          if [ "$merged" != "true" ]; then
+            echo "::error::PR 未能以 tested head $TESTED_SHA 合併。"
+            exit 1
+          fi
 
           # Branch cleanup 是合併後 housekeeping，不影響 merge 成功與否。
           if git push origin --delete "$HEAD_BRANCH"; then
