@@ -57,13 +57,41 @@ const saveUpload = async (request) => {
 const removeUpload = (id) => uploadStore("readwrite", (store) => store.delete(id));
 const queuedUploads = () => uploadStore("readonly", (store) => store.getAll());
 const uploadDocumentType = (formData) => String(formData?.get?.("documentType") ?? "").trim().toLowerCase();
-const isTravelReviewForm = (formData) => TRAVEL_DOCUMENT_TYPES.has(uploadDocumentType(formData));
+const isTravelDocumentType = (value) => TRAVEL_DOCUMENT_TYPES.has(String(value ?? "").trim().toLowerCase());
+const isTravelReviewForm = (formData) => isTravelDocumentType(uploadDocumentType(formData));
+const isExpenseContext = (formData) => String(formData?.get?.("uploadContext") ?? "").trim().toLowerCase() === "expense";
+const discardUploadedDraft = async (uploadUrl, documentId) => {
+  try {
+    const url = new URL(`/api/documents/${encodeURIComponent(documentId)}?discard=1`, uploadUrl);
+    const response = await fetch(url.toString(), { method: "DELETE", credentials: "include" });
+    return response.ok || response.status === 404;
+  } catch {
+    return false;
+  }
+};
 
 const flushUploads = async () => {
   const uploads = await queuedUploads();
   for (const upload of uploads) {
     try {
       const response = await fetch(upload.url, { method: "POST", body: upload.formData, credentials: "include" });
+      if (response.ok && isExpenseContext(upload.formData)) {
+        const data = await response.clone().json().catch(() => null);
+        if (data?.id && isTravelDocumentType(data.documentType)) {
+          const discarded = await discardUploadedDraft(upload.url, data.id);
+          await removeUpload(upload.id);
+          await notifyClients({
+            type: "tripclaim-upload-rejected",
+            id: upload.id,
+            reason: "travel_intake_required",
+            message: discarded
+              ? "機票／住宿請從「共同行程 → 我的行前資料」上傳，才能同步行程與報支。"
+              : "此離線文件被辨識為機票／住宿；請先在「我的文件」確認是否有殘留，再從行前資料上傳。",
+            cleanupFailed: !discarded,
+          });
+          continue;
+        }
+      }
       if (response.ok || response.status === 409) {
         await removeUpload(upload.id);
         await notifyClients({ type: "tripclaim-upload-synced", id: upload.id });
@@ -103,7 +131,7 @@ const handleDocumentUpload = async (request) => {
     return response;
   } catch {
     if (self.registration.sync) self.registration.sync.register("tripclaim-upload").catch(() => {});
-    return Response.json({ status: "review", confidence: 0, warnings: ["已保存在手機，恢復連線後自動辨識"], queued: true }, { status: 202 });
+    return Response.json({ status: "review", confidence: 0, warnings: ["已保存在手機，恢復連線後自動辨識"], queued: true, queueId: id }, { status: 202 });
   }
 };
 
