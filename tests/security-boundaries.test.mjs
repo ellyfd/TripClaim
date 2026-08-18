@@ -98,10 +98,12 @@ test("primary shell exposes one three-stage workflow and adaptive workbench",asy
 });
 
 test("deleting any booking deletes the complete order permanently",async()=>{
- const [panel,route,graph]=await Promise.all([
+ const [panel,route,graph,storage,queue]=await Promise.all([
   read("app/BookingPanel.tsx"),
   read("app/api/trips/[id]/bookings/[bookingId]/route.ts"),
   read("db/order-graph.ts"),
+  read("db/object-storage.ts"),
+  read("db/object-deletion-queue.ts"),
  ]);
  assert.match(panel,/永久刪除整張訂單/);
  assert.match(route,/hardDeleteOrderGraph/);
@@ -109,7 +111,10 @@ test("deleting any booking deletes the complete order permanently",async()=>{
  assert.doesNotMatch(route,/recoverable:true/);
  assert.match(graph,/sourceBookingId/);
  assert.match(graph,/uploadedDocuments/);
- assert.match(graph,/BUCKET\.delete/);
+ assert.match(graph,/deleteObjectKeysWithRetry/);
+ assert.match(graph,/queueObjectDeletionWrite/);
+ assert.match(storage,/BUCKET\.delete|bucket!\.delete/);
+ assert.match(queue,/pendingObjectDeletions/);
 });
 
 test("document extraction preserves AI evidence and human confirmation",async()=>{
@@ -291,11 +296,12 @@ test("card statement evidence saves TWD billing and links only to owned candidat
 });
 
 test("travel graphs are permanent while ordinary expenses keep recoverable deletion",async()=>{
- const [schema,migration,documents,expenses,bookings,graph,restore,inbox,summary]=await Promise.all([read("db/schema.ts"),read("drizzle/0020_recoverable_deletions.sql"),read("app/api/documents/[id]/route.ts"),read("app/api/expenses/[id]/route.ts"),read("app/api/trips/[id]/bookings/[bookingId]/route.ts"),read("db/order-graph.ts"),read("app/api/trash/[kind]/[id]/route.ts"),read("app/DocumentInbox.tsx"),read("app/ExpenseSummary.tsx")]);
+ const [schema,migration,documents,expenses,bookings,graph,storage,queue,restore,inbox,summary]=await Promise.all([read("db/schema.ts"),read("drizzle/0020_recoverable_deletions.sql"),read("app/api/documents/[id]/route.ts"),read("app/api/expenses/[id]/route.ts"),read("app/api/trips/[id]/bookings/[bookingId]/route.ts"),read("db/order-graph.ts"),read("db/object-storage.ts"),read("db/object-deletion-queue.ts"),read("app/api/trash/[kind]/[id]/route.ts"),read("app/DocumentInbox.tsx"),read("app/ExpenseSummary.tsx")]);
  for(const source of [schema,migration])assert.match(source,/deleted_at|deletedAt/);
  for(const source of [documents,bookings]){assert.match(source,/hardDeleteOrderGraph/);assert.match(source,/permanent:true/);assert.doesNotMatch(source,/recoverable:true/)}
  assert.match(expenses,/hardDeleteOrderGraph/);assert.match(expenses,/soft_delete_graph/);assert.match(expenses,/recoverable:true/);
- assert.match(graph,/BUCKET\.delete/);assert.match(graph,/db\.delete\(travelBookings\)/);assert.match(graph,/db\.delete\(uploadedDocuments\)/);
+ assert.match(graph,/deleteObjectKeysWithRetry/);assert.match(graph,/queueObjectDeletionWrite/);assert.match(graph,/db\.delete\(travelBookings\)/);assert.match(graph,/db\.delete\(uploadedDocuments\)/);
+ assert.match(storage,/BUCKET\.delete|bucket!\.delete/);assert.match(queue,/pendingObjectDeletions/);
  assert.match(restore,/restore_graph/);assert.match(restore,/db\.batch\(writes\)/);assert.match(restore,/ownerEmail,user\.email/);
  assert.doesNotMatch(inbox,/>復原</);assert.match(inbox,/無法復原/);assert.match(summary,/立即復原/);assert.match(summary,/永久刪除/);
 });
