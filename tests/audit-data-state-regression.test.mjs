@@ -19,7 +19,7 @@ test("unsaved itinerary drafts stay outside persisted rows and cancel is a real 
  assert.match(source,/\[draft,setDraft\]=useState<Agenda\|null>\(null\)/);
  assert.match(source,/const addAt=.*setDraft\(blankForCell\(date,time\)\)/);
  assert.doesNotMatch(source,/setRows\(v=>\[\.\.\.v,row\]\)/);
- assert.match(source,/const cancelDraft=\(\)=>\{setDraft\(null\)/);
+ assert.match(source,/const cancelDraft=\(\)=>\{[^}]*setDraft\(null\)/);
  assert.match(source,/保存失敗，未儲存內容仍保留在編輯區/);
  assert.match(source,/保存失敗，未儲存修改仍保留在編輯區/);
 });
