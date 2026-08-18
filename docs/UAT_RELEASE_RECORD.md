@@ -1,30 +1,39 @@
 # TripClaim 最終 UAT／發布觀察紀錄
 
-用途：Sprint 8 最後真人閘門。此文件只要求真人驗證「使用者看得到、做得到」的正式站流程；已由 CI 覆蓋的 internal invariant 不再要求測試者開 DevTools、抄 UUID 或直接打 legacy API。
+用途：Sprint 8／Audit remediation 最後真人閘門。此文件只要求真人驗證「使用者看得到、做得到」的正式站流程；已由 CI 覆蓋的 internal invariant 不要求測試者開 DevTools、抄 UUID 或直接打 legacy API。
 
-沒有完成本紀錄，不將「GitHub main 已合併」視為「正式站已驗收」。
+**沒有完成本紀錄，不將「GitHub main 已合併」視為「正式站已驗收」。**
 
 ## A. Release candidate 基線
 
 ### A1. Runtime／CI 已驗證
 
-- **Runtime release candidate SHA**：`8a2195013b0cb5e393541f597612cd3c39a270a1`
-- 對應 PR：`#76 Fix EVA outbound flight parsing and add executable regression`
-- CI tested head：`d4ae1f5706c7beebc072d17bcc7636157c14366e`
-- GitHub Actions：Auto test & merge `run #99`・success
+- **Runtime release candidate SHA**：`63536beb66927549ffac516087123f36c30589d9`
+- 對應 PR：`#83 Refactor trip workspace to overview, itinerary, preparation and claim`
+- CI tested head：`8989253cb8e7d5abbee17a59d6d6675d820608c3`
+- GitHub Actions：Auto test & merge `run #109`・success
 - Build：Pass
 - Sites artifact validation：Pass
-- Automated tests：`113 / 113` Pass・`0` Fail
+- Automated tests：`133 / 133` Pass・`0` Fail
 - D1 migration 最新版本：`0023_pending_object_deletions.sql`
 - Execution Plan 最後更新：2026-08-18
 
-本 runtime candidate 新增可執行 EVA regression：
+本 runtime candidate 已包含 2026-08-18 Product / UX / Technical Audit remediation：
 
+- [x] 行程 create/edit 使用 isolated draft；server acknowledgement + reload 後才成為 persisted state。
+- [x] 移除跨 trip 假日期／stale state；workspace 以 tripId remount 並防舊 response 覆蓋。
+- [x] 文件搜尋、0-result empty state、Cancel／Esc／dirty discard protection。
+- [x] Booking 缺值不顯示 TWD 0、timestamp locale 化、住宿專屬文案。
+- [x] 一般報支文件收斂為單一 upload entry；travel intake 歸「行前準備」。
+- [x] 建立出差具「儲存草稿並離開」／「放棄草稿」完整 server lifecycle。
+- [x] Trip Overview 為預設入口；Shared itinerary、Personal preparation、Personal claim 分離。
+- [x] 桌機與手機使用同一 workspace IA：出差／總覽／行程／準備／報支。
 - [x] BR87 `TPE → CDG`，`2026-06-15 23:30 → 2026-06-16 08:05` exact-value fixture Pass。
 - [x] BR88 `CDG → TPE`，`2026-06-25 11:20 → 2026-06-26 06:55` exact-value fixture Pass。
-- [x] EVA compact `HHMM` text layer 的 BR87 outbound fixture Pass。
+- [x] EVA compact `HHMM` text layer outbound fixture Pass。
+- [x] Travel whole-order delete／replace／fresh upload／no-restore／storage tombstone guards Pass。
 
-> **基線判定規則**：`docs/`、README、UAT 紀錄等純文件 commit 可以繼續合併，不會改變 runtime candidate。若 `8a219501...` 之後有任何會影響執行結果的程式／schema／build commit（例如 `app/`、`db/`、`drizzle/`、`public/`、runtime scripts、dependencies），才必須以新的 runtime SHA 重跑完整 CI 並重建本區基線。
+> **基線判定規則**：`docs/`、README、UAT 紀錄等純文件 commit 可以高於 runtime candidate，不改變 runtime。若 `63536beb...` 之後有任何會影響執行結果的程式／schema／build commit（例如 `app/`、`db/`、`drizzle/`、`public/`、runtime scripts、dependencies），必須重新跑完整 CI 並重建本區基線。
 
 ### A2. 本次 Sites 驗收
 
@@ -33,48 +42,109 @@
 - Sites production URL：`https://quick-trip-claim.ellyfd.chatgpt.site/`
 - Sites version / checkpoint：
 - GitHub main SHA（發布當下留存稽核；docs-only commit 可高於 runtime candidate）：
-- 實際 runtime candidate：`8a2195013b0cb5e393541f597612cd3c39a270a1`
+- 實際 runtime candidate：`63536beb66927549ffac516087123f36c30589d9`
 - 瀏覽器／裝置：
 - 測試 Trip ID：
 
 ## B. 已由 automated guards 驗證，不要求真人重做
 
-以下若 CI 不是全綠，本次 UAT 直接 No-Go；真人測試者不需為了這些項目打開 DevTools 或直接呼叫 API。
+以下若 CI 不是全綠，本次 UAT 直接 No-Go：
 
 - [x] Fresh travel upload 不會用 `contentHash` 重用已刪除 document；每次 upload 由伺服器建立新的 document ID。
-- [x] Legacy travel trash restore 已封鎖，travel booking／document／expense 不可由一般 trash API 復活。
+- [x] Legacy travel trash restore 已封鎖。
 - [x] 任一 booking DELETE 走 permanent whole-order graph deletion。
 - [x] 單一航段 PATCH 不可繞過 whole-order replace lifecycle。
 - [x] Confirm sync 使用 transactionally replace，不 append 舊 travel order。
-- [x] Flight-centric parser 直接執行 exact-value fixture；BR87 與 BR88 都必須返回完整 origin／destination／startAt／endAt。
-- [x] 住宿 15:00 check-in／11:00 checkout parser regression guard 存在。
-- [x] 正式 travel attachment 的 R2 cleanup 使用 bounded retry；失敗 key 由 D1 tombstone 持續追蹤。
-- [x] Tombstone 成功 cleanup 才清除；失敗時 attempts／last error 保留。
-- [x] Admin health API 僅 system admin 可讀／重試，且 response 不暴露 R2 object key。
+- [x] BR87／BR88 parser exact-value regression。
+- [x] 住宿 15:00 check-in／11:00 checkout parser regression。
+- [x] R2 bounded retry + pending deletion tombstone durability。
+- [x] Admin health API 僅 system admin 可讀／重試，且不暴露 R2 object key。
 - [x] 一般 non-travel expense 保留 recoverable delete。
+- [x] Trip-scoped workspace remount／stale-response guard。
+- [x] Itinerary draft 與 persisted rows 分離。
+- [x] Overview 不取代 Booking／Document／Expense／Agenda 的來源 ownership。
 
 ## C. 最小真人測試資料
 
 - [ ] 一張本人真實或去識別化來回／多航段機票，至少 2 個實際 departure → arrival 航段。
 - [ ] 保留上述完全相同檔案，供「刪除後同檔重傳」測試。
 - [ ] 一張住宿文件，清楚包含 check-in 與 check-out 日期。
-- [ ] 一般 non-travel 收據 1 張，用來確認普通費用仍可復原。
+- [ ] 一般 non-travel 收據 1 張。
+- [ ] 至少兩趟不同日期的測試 Trip，用來驗證切換時不顯示上一趟 stale state。
 
 > 不使用其他人的私人文件。正式 UAT 可使用本人文件或去識別化測試資料。
 
-## D. Travel order 真人必測流程
+## D. Audit Critical Journey：Trip／IA／Persistence
 
-### D1. 第一次上傳機票
+### D1. Overview-first 與跨裝置 IA
 
-- [ ] 從「共同行程 → 我的行前資料」唯一 travel intake 上傳機票。
+- [ ] 從「全部出差」點「開啟出差」後，預設進 **總覽**，不是直接塞進行程或報支。
+- [ ] 桌機工作區順序／概念為：**全部出差／總覽／行程／行前準備／我的報支**。
+- [ ] 手機 Bottom Navigation 為：**出差／總覽／行程／準備／報支**。
+- [ ] 手機不再有與桌機 ownership 不一致的中央「＋上傳」入口。
+- [ ] Overview 只顯示狀態與下一步；不能在 Overview 直接維護另一份 Booking／Expense／Agenda 真相。
+
+### D2. 行程新增／編輯 persistence
+
+- [ ] 在「行程」新增一筆一般活動，例如 09:00「會議」。
+- [ ] 未按保存前，畫面不得把 draft 偽裝成已同步正式 event。
+- [ ] 按保存後有明確 server-confirmed 完成回饋。
+- [ ] Reload 後「會議」仍存在，日期／時間／名稱一致。
+- [ ] 編輯既有一般活動後按「取消」，reload 後仍是原資料。
+- [ ] 編輯並保存後 reload，結果保持新值。
+- [ ] 機票／住宿 projection 不可當一般 event 直接獨立編輯；需導向「行前準備」來源訂單。
+
+### D3. 切 Trip 不得顯示 stale/default data
+
+- [ ] 準備兩趟日期明顯不同的 Trip A／Trip B。
+- [ ] 從 A 切到 B 時，B 的正確資料到達前只能看到中性 loading state。
+- [ ] 不得短暫顯示 A 的日期、活動、預設 `2026-06-16` 或其他非 B 資料。
+- [ ] 快速來回切 A／B，舊 request 完成後不得覆蓋目前 active trip。
+
+### D4. 建立出差草稿 lifecycle
+
+- [ ] 建立新出差輸入部分資料後，點「儲存草稿並離開」。
+- [ ] 返回列表後顯示「繼續建立草稿」。
+- [ ] 重新進入草稿，資料仍存在。
+- [ ] 點「放棄草稿」並確認後，草稿消失；reload 後不復活。
+- [ ] 編輯既有 Trip 後返回，不得污染／重建「建立新出差」草稿。
+
+## E. Audit Critical Journey：文件／報支互動
+
+### E1. 文件搜尋
+
+- [ ] 上傳或使用既有文件後，在「我的報支 → 我的文件」輸入完全不匹配的字串。
+- [ ] 結果必須顯示 `0 / N` 與「找不到相符文件」，原文件不可繼續出現在結果列。
+- [ ] 清除搜尋後文件重新出現。
+- [ ] 日期、店家、請款類型、檔名可作為搜尋條件。
+
+### E2. 文件確認可逆
+
+- [ ] 點「確認資料」進入編輯。
+- [ ] 不修改直接點「取消」可收合。
+- [ ] 修改欄位後點「取消」會詢問是否放棄未儲存修改。
+- [ ] 按 Esc 可走同一 dismiss lifecycle。
+- [ ] 取消後 reload，不得保存未確認修改。
+
+### E3. 缺件／缺值語意
+
+- [ ] 缺件卡可直接進入補刷卡單／補信用卡帳單／去確認等修復入口。
+- [ ] Booking 未填價格顯示「未填」，不是有效的 `TWD 0`。
+- [ ] 訂購時間顯示可讀的 zh-TW 時間，不直接顯示 ISO timestamp。
+- [ ] 住宿 modal 顯示住宿專屬說明，不出現「來回票」文案。
+- [ ] 一般報支文件只有一個主要 upload entry；文件類型為 optional preselection。
+
+## F. Travel order 真人必測流程
+
+### F1. 第一次上傳機票
+
+- [ ] 從 **「行前準備 → 我的行前資料」** 唯一 travel intake 上傳機票。
 - [ ] 上傳後有明確成功／辨識中／需確認回饋，不是無反應。
-- [ ] OCR／PDF parser 顯示所有實際航段，而不是只顯示第一段。
+- [ ] parser 顯示所有實際航段。
 - [ ] 每段均有正確出發機場、出發日期時間、抵達機場、抵達日期時間。
-- [ ] BR87 去程不得只剩 `TPE + 出發時間`；必須同時看到 `CDG + 抵達時間 2026/06/16 08:05`。
+- [ ] BR87 去程不得只剩 `TPE + 出發時間`；必須看到 `CDG + 2026/06/16 08:05`。
 - [ ] 跨日航段以真正抵達日期作為 endAt。
 - [ ] 多航段／來回只顯示一筆整張票金額。
-
-航段紀錄：
 
 | # | 航班 | Departure | Arrival | 結果 |
 | --- | --- | --- | --- | --- |
@@ -83,68 +153,61 @@
 | 3 |  |  |  | ☐ Pass ☐ Fail |
 | 4 |  |  |  | ☐ Pass ☐ Fail |
 
-### D2. 確認並同步
+### F2. 確認並同步
 
 - [ ] 按「確認並同步」有明確完成回饋。
-- [ ] 所有實際航段直接出現在共同行程。
-- [ ] 不另外產生一套重複 travel 卡片／行程資料。
+- [ ] 所有實際航段直接投影到「行程」。
+- [ ] 不建立另一套可獨立修改的 travel event／booking 真相。
 - [ ] 本人報支只形成一筆整張機票費用。
-- [ ] 機票 TODO 顯示由「訂單同步」管理，不能手動勾出假完成狀態。
-- [ ] 重新整理頁面後資料仍一致。
+- [ ] 機票 TODO 由「訂單同步」管理，不能手動偽造完成。
+- [ ] Reload 後資料仍一致。
 
-### D3. 從任一航段刪除整張訂單
-
-從哪一段執行刪除：
+### F3. 從任一航段刪除整張訂單
 
 - [ ] 刪除提示明確寫「永久刪除整張訂單」。
-- [ ] 去程、回程、轉機等同 source order 所有航段全部消失。
-- [ ] 共同行程內對應 agenda 全部消失。
-- [ ] 對應 travel expense 全部消失。
+- [ ] 同 source order 的去程、回程、轉機全部消失。
+- [ ] 行程 projection 全部消失。
+- [ ] travel expense 全部消失。
 - [ ] 正式 travel document／可見附件全部消失。
-- [ ] 重新整理頁面後資料仍未復活。
-- [ ] Booking comparison、TODO、行程與報帳 panel 都沒有殘留舊狀態。
+- [ ] Reload 後不復活。
+- [ ] Shared booking、TODO、行程、報支都沒有舊 state。
 
-> Legacy trash API 的不可復活性由 Section B automated guard 負責；真人只驗「正常 UI 無 ghost／重新整理不回魂」。
+### F4. 同一檔案重新上傳
 
-### D4. 同一檔案重新上傳
-
-- [ ] 使用 D1 完全相同的機票檔案重新上傳。
-- [ ] UI 重新跑一次讀取／辨識流程，而不是直接載入第一次舊結果。
-- [ ] 不出現「已有舊檔，載入既有文件」之類 duplicate reuse 行為。
-- [ ] parser 再次讀出所有實際航段，BR87 與 BR88 都完整。
+- [ ] 使用 F1 完全相同機票檔案重新上傳。
+- [ ] UI 重新跑讀取／辨識流程，不直接載入第一次舊結果。
+- [ ] 不出現「已有舊檔，載入既有文件」等 duplicate reuse 行為。
+- [ ] BR87／BR88 再次完整讀出。
 - [ ] 可以正常再次「確認並同步」。
 
-> Server document ID 是否不同由 Section B automated guard 保證；真人不需要開 DevTools 抄 UUID。真人驗收重點是：同檔重傳看起來像一份全新的 upload，舊 order 不回魂。
+### F5. 第二次確認並同步
 
-### D5. 第二次確認並同步
-
-- [ ] 同步後 itinerary 只存在第二次的新 source order。
+- [ ] 同步後行程只存在第二次的新 source order projection。
 - [ ] 不同時存在新舊航段。
 - [ ] 不產生第二份重複機票報支。
-- [ ] 重新整理後結果不變。
+- [ ] Reload 後結果不變。
 
-## E. 住宿真人必測流程
+## G. 住宿真人必測流程
 
-- [ ] 上傳住宿文件。
+- [ ] 從「行前準備 → 我的行前資料」上傳住宿文件。
 - [ ] 飯店名稱可辨識／可人工確認。
-- [ ] check-in 日期正確。
-- [ ] itinerary startsAt 固定為 check-in 日 **15:00**。
-- [ ] check-out 日期正確。
-- [ ] itinerary endsAt 固定為 check-out 日 **11:00**。
-- [ ] PDF 中付款時間、建立訂單時間等其他 timestamp 不覆蓋 15:00／11:00。
+- [ ] check-in 日期正確，startsAt 固定 **15:00**。
+- [ ] check-out 日期正確，endsAt 固定 **11:00**。
+- [ ] 付款時間／建立訂單時間不得覆蓋 15:00／11:00。
 - [ ] 城市或地址辨識不到時仍可確認同步。
-- [ ] 住宿直接出現在共同行程住宿列，不建立另外一套行程資料。
-- [ ] 重新整理後結果不變。
+- [ ] 住宿 projection 直接出現在「行程」，不建立另一套資料。
+- [ ] Reload 後結果不變。
 
-## F. 一般 non-travel 刪除回歸
+## H. 一般 non-travel／PWA 回歸
 
-- [ ] 上傳一般收據。
-- [ ] 刪除普通費用／文件仍顯示可復原行為。
-- [ ] 可立即復原。
+- [ ] 在「我的報支」上傳一般收據。
+- [ ] 一般費用離線拍照可保存並在恢復連線後續傳。
+- [ ] 刪除普通費用仍顯示 recoverable 行為並可立即復原。
 - [ ] 復原後原始文件與費用仍存在。
 - [ ] 此流程不出現「永久刪除整張 travel order」警告。
+- [ ] Travel 離線上傳不建立失聯 server document；恢復網路後由「行前準備」重新上傳。
 
-## G. 系統健康／Storage cleanup 真人驗收
+## I. 系統健康／Storage cleanup 真人驗收
 
 由 system admin 開啟：**系統管理 → 系統健康**。
 
@@ -154,33 +217,19 @@
 - 最舊等待：
 - 最高 attempts：
 
-完成 D3 刪除後：
+完成 F3 刪除後：
 
 - Pending：
 - 最舊等待：
 - 最高 attempts：
 
-真人需要驗：
-
-- [ ] 頁面可以正常載入，不是 404／500。
-- [ ] 正常情況 pending = 0，或短暫出現後自行／人工重試回到 0。
+- [ ] 頁面正常載入，不是 404／500。
+- [ ] 正常情況 pending = 0，或短暫出現後重試回到 0。
 - [ ] 管理頁不顯示實際 R2 object key。
-- [ ] 若畫面已有 pending，可按「重試待清理附件」，結果有明確回饋。
+- [ ] 若已有 pending，可按「重試待清理附件」，結果有明確回饋。
 - [ ] pending 持續增加或最舊等待 >24 小時時，判定 No-Go。
 
-> 不要求 UAT 人員刻意破壞 R2 來製造 failure。失敗 tombstone 是否保留、attempts 是否增加已由 Section B automated guard 驗證。
-
-## H. 手機／PWA 快速驗收
-
-依 `docs/DEVICE_QA.md`，至少完成：
-
-- [ ] iPhone Safari 或 Android Chrome 390–412px：Bottom Navigation 可達。
-- [ ] 一般費用離線拍照可保存並於恢復連線後續傳。
-- [ ] Travel 上傳在離線狀態不建立失聯 server document；恢復連線後可重新上傳。
-- [ ] 今日行程不顯示縮小版大型 Excel。
-- [ ] Bottom Sheet 不被 safe area 遮住。
-
-## I. 報帳／匯出 reconciliation
+## J. 報支／匯出 reconciliation
 
 - [ ] 原始幣別與原始金額仍保留。
 - [ ] 非公司白名單幣別要求 TWD reporting，不靜默覆蓋原幣。
@@ -188,22 +237,37 @@
 - [ ] Excel 彙總、費用明細、ZIP manifest、附件分組金額一致。
 - [ ] 信用卡帳單只做付款證明；國外交易手續費獨立列 TWD。
 
-## J. 48 小時觀察
+## K. 裝置快速驗收
 
-| 時間 | 上傳失敗 | OCR 待確認 | Pending storage | 最舊等待 | 匯出差額 | 備註 |
-| --- | ---: | ---: | ---: | --- | ---: | --- |
-| T+0 |  |  |  |  |  |  |
-| T+4h |  |  |  |  |  |  |
-| T+24h |  |  |  |  |  |  |
-| T+48h |  |  |  |  |  |  |
+依 `docs/DEVICE_QA.md`：
 
-## K. Go / No-Go
+- [ ] iPhone Safari 390×844。
+- [ ] Android Chrome 412×915。
+- [ ] PWA standalone。
+- [ ] Desktop 1024／1280／1440／1920px。
+- [ ] 操作型 control 至少 44×44px；行程 Bottom Sheet 不被 safe area 遮住。
+- [ ] 手機「行程」仍是單日／Today-focused，不顯示縮小大型 Excel。
 
-以下任一成立即為 No-Go：
+## L. 48 小時觀察
 
-- [ ] 有使用者可讀到他人的私人附件／卡片／報帳。
+| 時間 | 上傳失敗 | OCR 待確認 | Pending storage | 最舊等待 | 匯出差額 | Stale/persistence issue | 備註 |
+| --- | ---: | ---: | ---: | --- | ---: | ---: | --- |
+| T+0 |  |  |  |  |  |  |  |
+| T+4h |  |  |  |  |  |  |  |
+| T+24h |  |  |  |  |  |  |  |
+| T+48h |  |  |  |  |  |  |  |
+
+## M. Go / No-Go
+
+以下任一成立即為 **No-Go**：
+
+- [ ] 新增／編輯一般行程在 reload 後消失或回到錯誤值。
+- [ ] 切 Trip 時短暫顯示另一趟／預設日期或 stale data。
+- [ ] 文件搜尋無匹配仍顯示舊文件，或文件確認無法取消。
+- [ ] Desktop／mobile 出現兩套互相矛盾的 workspace IA。
+- [ ] 有使用者可讀到他人的私人附件／卡片／報支。
 - [ ] Travel order 刪除後可見資料復活或留下 ghost。
-- [ ] 同檔重傳直接載入舊 upload／舊辨識結果，而不是一份新的上傳流程。
+- [ ] 同檔重傳直接載入舊 upload／舊辨識結果。
 - [ ] 確認同步後新舊 travel order 同時存在。
 - [ ] BR87 去程缺 `CDG` 或 `2026/06/16 08:05`。
 - [ ] 其他實際航段漏段或 departure／arrival 日期時間錯誤。
@@ -212,7 +276,7 @@
 - [ ] 原始幣別或原始文件遺失。
 - [ ] 系統健康 API／頁面無法使用。
 - [ ] Pending storage cleanup 持續增加或最舊項目 >24 小時仍未清除。
-- [ ] Runtime candidate `8a219501...` 之後出現程式／schema／build 變更，但沒有以新的 runtime SHA 重跑完整 CI 與重建 release baseline。
+- [ ] Runtime candidate `63536beb...` 之後出現程式／schema／build 變更，但沒有新的完整 CI baseline。
 
 最終決策：**☐ GO　☐ NO-GO**
 
