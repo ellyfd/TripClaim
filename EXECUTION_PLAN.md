@@ -131,10 +131,9 @@
 - [x] 權限、惡意檔案、私有下載與稽核測試。
 - [x] 逐步啟用與 rollback 技術演練手冊。
 - [x] Travel order whole-order lifecycle、replace lifecycle、storage tombstone durability。
-- [ ] 內部真人 destructive UAT（需先將 runtime candidate 發布到 ChatGPT Sites，再由具 Sites 權限帳號依 `docs/UAT_RELEASE_RECORD.md` 與 `docs/DEVICE_QA.md` 執行）。
-- [ ] UAT 通過後完成 48 小時觀察，再決定 GO／NO-GO。
+- [x] Sprint 8 與 Sprint 9 重複的真人發布／驗收項目已收斂到下方唯一「Final Release Gate」，operational tracker 為 GitHub Issue #85。
 
-完成定義：零未追蹤孤兒附件；零未知資料被靜默轉換；travel order 無 ghost／無 restore；Audit P1 data-state 問題不得重現；完整可回滾。
+完成定義：Sprint 8 的 code、migration、壓測與 release tooling 已完成；正式站驗收不在本 Sprint 重複計數，統一由 Final Release Gate 判定。
 
 ### Sprint 9：2026-08-18 Product / UX / Technical Audit Remediation（P1）
 
@@ -151,9 +150,32 @@ Audit 初始判定為 NO-GO；下列 code remediation 已完成：
 - [x] Shared itinerary／Personal preparation／Personal claim 分離並新增 Trip Overview。
 - [x] 桌機／手機 navigation 使用同一 IA。
 - [x] Runtime baseline `63536beb66927549ffac516087123f36c30589d9`（PR #83），CI run #109，build + Sites artifact validation + **133/133 tests** Pass。
-- [ ] 將上述 runtime 發布至 Sites 後，重新跑 Audit 的 Critical Journey / destructive QA，包含 create→reload persistence、cross-trip stale render、搜尋／取消、travel whole-order lifecycle、同檔重傳、住宿時間、匯出 reconciliation。
+- [x] Audit code remediation 已關帳；Sites 上的 Critical Journey / destructive QA 不在 Sprint 9 再列第二份待辦，統一交由 Final Release Gate。
 
-完成定義：code remediation 全綠只是「可進真人 UAT」，不等同正式站已驗收；只有 Sites 上的 destructive QA 與 48h observation 通過才可解除 NO-GO。
+完成定義：Sprint 9 code remediation 已完成；正式站是否解除 NO-GO 僅由 Final Release Gate 的 Sites destructive QA 與 48h observation 決定。
+
+### Final Release Gate（唯一未完成工作）
+
+目前 release baseline：
+
+- GitHub main 可包含高於 runtime 的 docs-only commit；不得因此誤認 runtime 已改變。
+- Runtime release candidate：`63536beb66927549ffac516087123f36c30589d9`（PR #83）。
+- CI baseline：run #109，build + Sites artifact validation + **133/133 tests** Pass。
+- D1 migration：`0023_pending_object_deletions.sql`。
+- 唯一 operational tracker：GitHub Issue **#85 `Final Sites UAT & 48h release gate`**。
+- 驗收紀錄：`docs/UAT_RELEASE_RECORD.md`；裝置矩陣：`docs/DEVICE_QA.md`。
+
+- [ ] **Gate A — Sites Publish / checkpoint + authenticated destructive UAT**：發布包含上述 runtime candidate 的 ChatGPT Sites 版本，記錄 Sites version/checkpoint，依 #85 與 UAT 文件完成 Audit Critical Journey、travel whole-order lifecycle、同檔重傳、住宿時間、一般報支 regression、storage health、export reconciliation 與 device QA。
+- [ ] **Gate B — 48h observation + GO / NO-GO**：Gate A PASS 後才開始 T+0／T+4h／T+24h／T+48h 觀察；不得出現 persistence、cross-trip stale render、travel ghost／restore、privacy、storage-health 或 financial reconciliation regression。
+
+執行規則：
+
+1. Final Release Gate 的 checkbox 只在 Issue #85 與 `docs/UAT_RELEASE_RECORD.md` 記錄實際證據；Sprint 8／9 不再建立重複 checklist。
+2. GitHub merge、CI 全綠或 Sites artifact validation 都不等於 production Sites 已驗收。
+3. Gate A 若發現 runtime defect，停止 Gate，建立獨立 fix branch／PR 與 regression coverage；完整 CI 通過、重新發布 Sites 後，從受影響 destructive flow 重新開始 Gate A。
+4. Gate A 未 PASS 不得開始 48h observation；Gate B 未 PASS 不得標記 GO。
+
+完成定義：Gate A + Gate B 均 PASS，才將 TripClaim 從 NO-GO 改為 GO。
 
 ### 2026-08-18 Travel Order Lifecycle Amendment（P0，不得回歸）
 
