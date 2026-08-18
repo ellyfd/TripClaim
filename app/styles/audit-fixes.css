@@ -42,6 +42,19 @@
 .agenda-window-nav button{padding:0 12px;border:1px solid #b8cbc2;border-radius:8px;background:#fff;color:var(--green);font-weight:800;white-space:nowrap}
 .agenda-window-nav button:disabled{opacity:.45;cursor:not-allowed}
 
+/* Synced flight projections are duration bands, not one-hour cards. */
+.flight-range-notice{margin:0 0 9px;padding:8px 11px;border:1px solid #bfd3e7;border-radius:8px;background:#eef5fb;color:#355f86;font-size:12px;font-weight:750}
+.sheet-cell.has-flight-duration{cursor:default;background:#f8fbfe}
+.flight-duration-segment{position:absolute;z-index:4;display:flex;min-height:2px;flex-direction:column;gap:1px;padding:3px 25px 3px 7px;border-left:3px solid #4e79a7;border-radius:0;background:#e4eef8;box-shadow:inset 0 0 0 1px rgba(78,121,167,.16);overflow:hidden;pointer-events:auto}
+.flight-duration-segment.segment-day-start{border-radius:6px 6px 0 0}
+.flight-duration-segment.segment-day-end{border-radius:0 0 6px 6px}
+.flight-duration-segment.segment-day-start.segment-day-end{border-radius:6px}
+.flight-duration-segment b{font-size:11px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.flight-duration-segment span{font-size:10px;line-height:1.15;color:#4d6478;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.flight-duration-segment .flight-arrival{margin-top:auto;color:#294f71;font-weight:850}
+.flight-duration-segment>button{position:absolute;right:3px;top:2px;width:22px;height:22px;border:0;background:transparent;color:#8f554a;font-size:17px;line-height:1}
+.flight-duration-segment:not(.segment-flight-start)>button{display:none}
+
 /* Audit IA: one trip workspace model on desktop and mobile. */
 .topbar nav[aria-label="Trip workspace"]{gap:4px;margin-left:14px}
 .topbar nav[aria-label="Trip workspace"] button{min-width:88px;padding-inline:10px}
@@ -101,4 +114,8 @@
  .agenda-window-nav{justify-content:space-between;gap:6px;padding:6px}
  .agenda-window-nav span{font-size:11px}
  .agenda-window-nav button{padding:0 8px;font-size:12px}
+ .flight-range-notice{font-size:13px;line-height:1.4}
+ .flight-duration-segment{padding:4px 27px 4px 8px}
+ .flight-duration-segment b{font-size:13px}
+ .flight-duration-segment span{font-size:12px}
 }
