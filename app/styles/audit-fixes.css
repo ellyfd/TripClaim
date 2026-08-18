@@ -5,6 +5,7 @@
 .trip-row-actions button,
 .trip-more summary,
 .agenda-sheet-toolbar button,
+.agenda-window-nav button,
 .agenda-item-actions button,
 .side-booking-actions button,
 .quick-booking-dialog button,
@@ -36,6 +37,10 @@
 .wizard-exit-actions .back-to-trips{position:static;margin:0}
 .wizard-exit-actions .discard-draft{margin-left:auto;padding:0 14px;border:1px solid #d7b9b2;border-radius:8px;background:#fff;color:#8a3b2f;font-weight:800}
 .draft-lifecycle-note{display:block;margin-top:7px;color:var(--muted);font-weight:650}
+.agenda-window-nav{display:flex;align-items:center;justify-content:center;gap:10px;margin:8px 0 10px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:#fff}
+.agenda-window-nav span{color:var(--muted);font-size:12px;font-weight:750;text-align:center}
+.agenda-window-nav button{padding:0 12px;border:1px solid #b8cbc2;border-radius:8px;background:#fff;color:var(--green);font-weight:800;white-space:nowrap}
+.agenda-window-nav button:disabled{opacity:.45;cursor:not-allowed}
 
 /* Audit IA: one trip workspace model on desktop and mobile. */
 .topbar nav[aria-label="Trip workspace"]{gap:4px;margin-left:14px}
@@ -93,4 +98,7 @@
  .overview-card{min-height:0}
  .overview-card p{min-height:0}
  .trip-preparation-page .trip-todo-panel,.trip-preparation-page .comp-leave-panel{width:100%}
+ .agenda-window-nav{justify-content:space-between;gap:6px;padding:6px}
+ .agenda-window-nav span{font-size:11px}
+ .agenda-window-nav button{padding:0 8px;font-size:12px}
 }

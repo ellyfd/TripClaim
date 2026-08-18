@@ -20,7 +20,7 @@ test("document confirmation is reversible with cancel escape and dirty protectio
  assert.match(source,/放棄這次尚未儲存的文件修改/);
  assert.match(source,/event\.key==="Escape"/);
  assert.match(source,/className="document-editor-actions"/);
- assert.match(source,/type="button" onClick=\{\(\)=>closeEditor\(\)\}>取消/);
+ assert.match(source,/type="button"[^>]*onClick=\{\(\)=>closeEditor\(\)\}>取消/);
 });
 
 test("booking comparison does not present missing price as zero and formats booked time",async()=>{
@@ -45,6 +45,7 @@ test("audited action controls meet the 44px target without expanding the data gr
  const [globalCss,auditCss]=await Promise.all([read("app/globals.css"),read("app/styles/audit-fixes.css")]);
  assert.match(globalCss,/@import "\.\/styles\/audit-fixes\.css";\s*$/);
  assert.match(auditCss,/min-height:44px/);
+ assert.match(auditCss,/\.agenda-window-nav button/);
  assert.match(auditCss,/\.trip-context-nav \.back\{width:108px;min-width:108px;height:44px/);
  assert.doesNotMatch(auditCss,/\.sheet-add[^\n]*min-height:44px/);
 });
