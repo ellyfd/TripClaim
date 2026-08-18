@@ -1,6 +1,6 @@
 # TripClaim 執行優化規劃書
 
-最後更新：2026-08-08  
+最後更新：2026-08-18  
 決策角色：CPO、CTO、IA、UIUX、財務流程  
 產品主流程：建立出差 → 共同行程 → 我的報帳
 
@@ -13,6 +13,7 @@
 5. 原始交易資料不可被申報資料覆蓋。非白名單幣別須保留原始幣別與金額，並提醒只能以 TWD 申報。
 6. 同一報支項目若申報幣別不同，彙總、Excel 與 ZIP 必須分行、分組。
 7. 同行者共編行程，但每個人的信用卡、文件、報帳與缺件狀態維持私有；他人未完成不得阻擋本人。
+8. 機票與住宿是 travel order，不是彼此獨立的卡片。正式 travel order 必須以「整張訂單 graph」建立、取代與刪除；任何單一航段不得自行脫離訂單生命週期。
 
 ## 二、生命週期入口
 
@@ -57,9 +58,9 @@
 - [x] 國外交易手續費獨立形成「國外交易手續費｜TWD」。
 - [x] 日期、店家、原幣、TWD 金額與卡末四碼候選配對；多筆相近時要求人工確認。
 - [x] 無法唯一匹配時進待確認。
-- [x] 費用、文件、訂單與行程刪除使用後端原子 batch、soft delete、復原與 audit log。
+- [x] 一般非 travel 費用／文件可使用後端 soft delete、復原與 audit log；正式機票／住宿改為 permanent whole-order delete，不進 travel trash、不允許 restore。
 
-完成定義：帳單不重複計費；手續費獨立；沒有孤兒附件；誤刪可復原。
+完成定義：帳單不重複計費；手續費獨立；一般費用誤刪可復原；正式 travel order 刪除後不得由任何 legacy trash／舊文件重新復活。
 
 ### Sprint 3：正式彙總與輸出（P0）
 
@@ -87,19 +88,19 @@
 ### Sprint 5：PWA 收件匣與 OCR Pipeline（P0）
 
 - [x] 拍照後先存 IndexedDB，一秒內顯示「已保存，辨識中」。
-- [x] 建立 client job ID 與 retry queue；伺服器沿用文件 hash 防止重送形成重複費用。
-- [x] 離線可繼續拍照，背景同步或恢復連線後續傳。
+- [x] 建立 client job ID 與 retry queue；一般費用附件維持離線 queue；travel 上傳必須在線取得新的 server document ID，離線不背景補傳。每次 travel 重傳都建立新的 document ID。`contentHash` 僅保留作稽核與清除歷史 byte-identical ghost copies，不得用來重新載入／重用舊 travel document。
+- [x] 一般費用離線可繼續拍照，背景同步或恢復連線後續傳；travel 離線時明確要求恢復連線後重新上傳。
 - [x] 圖片方向校正、長邊縮至 2200px、壓縮與清晰度檢查後再 OCR；模糊時要求人工確認。
 - [x] PDF 優先讀文字層；無文字層的掃描檔明確標示待確認；圖片 OCR worker 跨檔案重複使用。
 - [x] OCR 保存 raw text、candidate、confidence、mapping reason 與 confirmed value。
 
-完成定義：手機兩次點擊內完成上傳；一秒內獲得保存回饋；離線重啟後可續傳。
+完成定義：手機兩次點擊內完成上傳；一般費用一秒內獲得保存回饋且離線重啟後可續傳；travel 離線不產生失聯文件；重新上傳同檔案不得讓已刪除 travel order 回魂。
 
 ### Sprint 6：桌機工作台與 IA 重排（P1）
 
 - [x] 共同行程中間為大型 Excel 工作區，右側集中機票、住宿、出差單、網路、完成度與補休。
 - [x] 報帳中間為費用流水帳，文件、缺件、信用卡與輸出放右側。
-- [x] 同行者訂單比較放主區底部，不塞右欄。
+- [x] 同行者訂單比較放主區底部，不塞右欄；比較單位為 source order，不是每個航段一張重複訂單卡。
 - [x] 全天與住宿置頂；預設顯示 08:00–22:00。
 - [x] 行程與費用長列表只渲染可見內容。
 
@@ -115,7 +116,7 @@
 
 完成定義：390px 可順暢操作；導覽不消失；手機首屏沒有管理、完整匯出或大型表格。
 
-### Sprint 8：遷移、壓力測試與分階段發布（P1）
+### Sprint 8：遷移、資料完整性、壓力測試與分階段發布（P1）
 
 - [x] 舊資料 mapping 與 migration exceptions。
 - [x] 新舊加總雙讀比較。
@@ -123,9 +124,25 @@
 - [x] iPhone Safari、Android Chrome 與 PWA standalone 裝置契約、自動測試與人工驗收矩陣。
 - [x] 權限、惡意檔案、私有下載與稽核測試（採登入即時串流，不產生可外流的公開 URL）。
 - [x] 逐步啟用與 rollback 技術演練手冊。
+- [x] Travel order 改為 whole-order lifecycle：任一航段／travel 文件／travel 費用刪除都永久刪除完整 graph；legacy trash 不得復活。
+- [x] Travel 確認同步使用 replace lifecycle；同類舊訂單 graph 與新訂單建立在同一 D1 batch 內完成，不 append 半套資料。
+- [x] R2 正式附件刪除先做 bounded retry；DB graph 刪除時同 batch 建立 pending object deletion tombstone，失敗 key 保持可追蹤並於後續 travel 操作重試，成功後才清 tombstone。
 - [ ] 內部真人試用（需由具 Sites 權限的測試帳號依 `docs/DEVICE_QA.md` 執行）。
 
-完成定義：零孤兒附件、零未知資料被靜默轉換、完整可回滾。
+完成定義：零未追蹤孤兒附件；所有 storage cleanup failure 都有 tombstone／attempt 記錄；零未知資料被靜默轉換；travel order 無 ghost／無 restore；完整可回滾。
+
+### 2026-08-18 Travel Order Lifecycle Amendment（P0，不得回歸）
+
+1. 每次上傳都建立新的 document ID；重新上傳不得指向已刪除 document。
+2. 一張機票訂單可包含任意多個實際航段；每一航段必須保存自己的 departure → arrival 日期、時間與機場。
+3. 來回／多航段只形成一筆整張機票報支金額，不得因航段數重複計價。
+4. 點任一去程、回程、轉機航段、travel 文件或其 travel expense 的刪除，都代表永久刪除完整 source order graph。
+5. Travel order 不使用 soft delete restore；legacy trash API 不得復活 travel booking、travel document、agenda 或 travel expense。
+6. 「確認並同步」不是 append；必須以 whole-order replace 取代本人同類舊 travel order，並讓所有相關 panel 重新載入。
+7. 住宿行程以入住日 15:00 作為 startsAt、退房日 11:00 作為 endsAt；城市與地址可選填，不得阻擋同步。
+8. `contentHash` 不是訂單身份。它只能用於稽核及刪除歷史 byte-identical ghost copies，不得用來載入舊 order 成為 active source。
+9. 正式 travel attachment 的 D1 graph 刪除與 object deletion tombstone 必須同 batch；R2 失敗只能形成「已追蹤待清理」，不得形成無記錄 orphan object。
+10. Travel booking 的完成狀態由正式 booking evidence 管理，使用者不能靠手動勾選 TODO 偽造已完成。
 
 ## 四、桌機與手機 IA
 
@@ -150,6 +167,11 @@
 5. 非白名單原幣保留，申報 TWD，且必須顯示原因。
 6. 帳單附件不重複建立消費；手續費獨立為 TWD。
 7. 報支表、明細、ZIP 與附件索引的組別、順序與金額一致。
+8. 刪除任一 travel 航段後，同張 source order 的所有航段、agenda、travel expense、正式文件與可見附件必須一起消失。
+9. 刪除後重新上傳相同檔案，必須得到新的 document ID；不得載入舊 travel order。
+10. 新文件確認同步後，共同行程只保留新 source order 的航段／住宿，不得同時存在新舊版本。
+11. 住宿必須以 15:00 check-in 與 11:00 checkout 形成行程；PDF 其他時間戳不得覆蓋這兩個時間。
+12. R2 刪除失敗不得留下無追蹤 object；failed object key 必須存在 pending deletion tombstone 並可後續重試。
 
 ## 六、北極星指標
 
