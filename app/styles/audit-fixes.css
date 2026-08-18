@@ -12,7 +12,6 @@
 .shared-booking-overview .booking-card footer button,
 .expense-workbench-page .expense-drawer-trigger,
 .expense-workbench-page .expense-upload-main,
-.expense-workbench-page .expense-type-buttons button,
 .expense-workbench-page .expense-side-actions button,
 .expense-workbench-page .mobile-expense-more button,
 .document-head-actions button,
@@ -28,6 +27,8 @@
 .document-editor-actions button{padding-inline:14px}
 .missing-list article>button{margin-left:auto;padding:0 10px;border:1px solid #b7c9c0;border-radius:8px;background:#fff;color:var(--green);font-weight:800;white-space:nowrap}
 .booking-card .price.missing{color:var(--muted);font-weight:700}
+.expense-upload-type{display:grid;gap:5px;margin:10px 0 8px;color:var(--muted);font-size:12px;font-weight:700}
+.expense-upload-type select{min-height:44px;width:100%;padding:0 10px;border:1px solid #b9cbc2;border-radius:8px;background:#fff;color:var(--ink);font:inherit}
 
 @media(max-width:800px){
  .trip-context-nav{grid-template-columns:116px minmax(0,1fr)}
