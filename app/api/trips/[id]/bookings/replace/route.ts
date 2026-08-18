@@ -3,6 +3,7 @@ import {and,eq,inArray,isNull} from "drizzle-orm";
 import {getChatGPTUser} from "../../../../../chatgpt-auth";
 import {getDb} from "../../../../../../db";
 import {recordAudit,requireTripMember} from "../../../../../../db/access";
+import {queueObjectDeletionWrite,reconcileQueuedObjectDeletionResult,retryPendingObjectDeletions} from "../../../../../../db/object-deletion-queue";
 import {deleteObjectKeysWithRetry} from "../../../../../../db/object-storage";
 import {agendaItems,masterDataExceptions,personalExpenses,travelBookings,uploadedDocuments} from "../../../../../../db/schema";
 import {decideReportingCurrency,managedClaimTypeCode,MASTER_DATA_VERSION} from "../../../../../managed-config";
@@ -20,6 +21,7 @@ export async function POST(request:NextRequest,{params}:{params:Promise<{id:stri
  const invalidLeg=input.kind==="flight"?legs.some(leg=>!leg.title?.trim()||!leg.startAt||!leg.endAt||!leg.origin?.trim()||!leg.destination?.trim()):legs.some(leg=>!leg.title?.trim()||!leg.startAt||!leg.endAt);
  if(invalidLeg)return NextResponse.json({error:"invalid_leg"},{status:400});
  const db=await getDb();
+ const priorCleanup=await retryPendingObjectDeletions({ownerEmail:user.email,tripId:id}).catch(()=>({attempted:0,deleted:0,remaining:0}));
 
  // Any supplied document is a formal source record. Validate it before reading/deleting the old order graph.
  let validatedDocument:null|typeof uploadedDocuments.$inferSelect=null;
@@ -51,6 +53,8 @@ export async function POST(request:NextRequest,{params}:{params:Promise<{id:stri
  const replacedGroups=new Set([...oldBookings.map(item=>item.documentId?`document:${item.documentId}`:`manual:${item.bookedAt}`),...oldDocuments.map(item=>`document:${item.id}`)]);
  const now=new Date().toISOString(),bookedAt=input.bookedAt??now,originalCurrency=input.currency.trim().toUpperCase(),decision=decideReportingCurrency(originalCurrency),category=input.kind==="flight"?"機票(自行刷卡)":"住宿";
  const bookingIds:string[]=[],agendaIds:string[]=[],writes=[];
+ // Persist deletion tombstones in the same atomic D1 replace batch, then clear them only after R2 confirms deletion.
+ for(const document of oldDocuments)writes.push(queueObjectDeletionWrite(db,{ownerEmail:user.email,tripId:id,objectKey:document.objectKey,sourceType:"uploaded_document",sourceId:document.id,now}));
  if(oldExpenseIds.length)writes.push(db.update(uploadedDocuments).set({linkedExpenseId:null,updatedAt:now}).where(and(eq(uploadedDocuments.ownerEmail,user.email),inArray(uploadedDocuments.linkedExpenseId,oldExpenseIds))));
  if(oldBookingIds.length)writes.push(db.delete(agendaItems).where(and(eq(agendaItems.tripId,id),inArray(agendaItems.notes,oldBookingIds.map(bookingId=>`booking:${bookingId}`)))));
  if(oldExpenseIds.length)writes.push(db.delete(personalExpenses).where(and(eq(personalExpenses.ownerEmail,user.email),inArray(personalExpenses.id,oldExpenseIds))));
@@ -67,7 +71,7 @@ export async function POST(request:NextRequest,{params}:{params:Promise<{id:stri
  const expenseId=crypto.randomUUID(),first=legs[0];
  writes.push(db.insert(personalExpenses).values({id:expenseId,ownerEmail:user.email,tripId:id,sourceDocumentId:validatedDocument?.id,sourceBookingId:bookingIds[0],category,categoryCode:managedClaimTypeCode(category),merchant:first.title!.trim(),expenseDate:first.startAt!.slice(0,10),originalAmountMinor:input.amountMinor!,originalCurrency,reportingAmountMinor:decision.requiresTwd?null:input.amountMinor!,reportingCurrency:decision.reportingCurrency,currencyDecisionReason:decision.reason,amountMinor:decision.requiresTwd?0:input.amountMinor!,currency:decision.reportingCurrency,status:"review",masterDataVersion:MASTER_DATA_VERSION,createdAt:now,updatedAt:now}));
  await db.batch(writes);
- const objectCleanup=await deleteObjectKeysWithRetry(oldDocuments.map(doc=>doc.objectKey));
- await recordAudit({tripId:id,actorEmail:user.email,entityType:"travel_order",entityId:validatedDocument?.id??bookingIds[0],action:"replace_order_graph",before:{replacedGroups:[...replacedGroups],oldBookingIds,oldDocumentIds,oldExpenseIds},after:{kind:input.kind,bookingIds,agendaIds,expenseId,documentId:validatedDocument?.id,bookedAt,objectDeleteFailures:objectCleanup.objectDeleteFailures,objectDeleteAttempts:objectCleanup.attemptsUsed,failedObjectKeys:objectCleanup.failedObjectKeys}});
- return NextResponse.json({saved:true,replacedOrders:replacedGroups.size,bookingsCreated:bookingIds.length,bookingIds,agendaIds,expenseId,documentId:validatedDocument?.id,objectDeleteFailures:objectCleanup.objectDeleteFailures,objectDeleteAttempts:objectCleanup.attemptsUsed,cleanupPending:objectCleanup.objectDeleteFailures>0},{status:201});
+ const oldObjectKeys=oldDocuments.map(doc=>doc.objectKey),objectCleanup=await deleteObjectKeysWithRetry(oldObjectKeys),queueState=await reconcileQueuedObjectDeletionResult(oldObjectKeys,objectCleanup);
+ await recordAudit({tripId:id,actorEmail:user.email,entityType:"travel_order",entityId:validatedDocument?.id??bookingIds[0],action:"replace_order_graph",before:{replacedGroups:[...replacedGroups],oldBookingIds,oldDocumentIds,oldExpenseIds},after:{kind:input.kind,bookingIds,agendaIds,expenseId,documentId:validatedDocument?.id,bookedAt,objectDeleteFailures:objectCleanup.objectDeleteFailures,objectDeleteAttempts:objectCleanup.attemptsUsed,failedObjectKeys:objectCleanup.failedObjectKeys,objectDeleteQueued:queueState.queued,priorCleanupRemaining:priorCleanup.remaining}});
+ return NextResponse.json({saved:true,replacedOrders:replacedGroups.size,bookingsCreated:bookingIds.length,bookingIds,agendaIds,expenseId,documentId:validatedDocument?.id,objectDeleteFailures:objectCleanup.objectDeleteFailures,objectDeleteAttempts:objectCleanup.attemptsUsed,cleanupPending:queueState.queued>0,cleanupQueued:queueState.queued,priorCleanupRemaining:priorCleanup.remaining},{status:201});
 }
