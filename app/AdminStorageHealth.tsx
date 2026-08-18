@@ -8,9 +8,9 @@ const age=(value:string|null)=>{if(!value)return "—";const minutes=Math.max(0,
 
 export default function AdminStorageHealth(){
  const [data,setData]=useState<HealthPayload|null>(null),[message,setMessage]=useState(""),[busy,setBusy]=useState(false);
- const load=useCallback(async()=>{const r=await fetch("/api/admin/health",{cache:"no-store"});if(r.ok){setData(await r.json());setMessage("")}else setMessage(r.status===403?"只有管理者可以查看系統健康":"無法讀取系統健康狀態")},[]);
+ const load=useCallback(async()=>{const r=await fetch("/api/admin/health",{cache:"no-store"});if(r.ok)setData(await r.json());else setMessage(r.status===403?"只有管理者可以查看系統健康":"無法讀取系統健康狀態")},[]);
  useEffect(()=>{load().catch(()=>setMessage("無法讀取系統健康狀態"))},[load]);
- const retry=async()=>{setBusy(true);setMessage("正在重試待清理附件…");try{const r=await fetch("/api/admin/health",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({action:"retry_pending_storage"})});if(!r.ok)throw new Error("retry_failed");const result=await r.json();setMessage(result.remaining?`已清理 ${result.deleted} 個，仍有 ${result.remaining} 個待清理`:`已清理 ${result.deleted} 個，目前沒有待清理附件`);await load()}catch{setMessage("重試失敗；待清理記錄仍保留，不會遺失")}finally{setBusy(false)}};
+ const retry=async()=>{setBusy(true);setMessage("正在重試待清理附件…");try{const r=await fetch("/api/admin/health",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({action:"retry_pending_storage"})});if(!r.ok)throw new Error("retry_failed");const result=await r.json();await load();setMessage(result.remaining?`已清理 ${result.deleted} 個，仍有 ${result.remaining} 個待清理`:`已清理 ${result.deleted} 個，目前沒有待清理附件`)}catch{setMessage("重試失敗；待清理記錄仍保留，不會遺失")}finally{setBusy(false)}};
  const summary=data?.summary;
  return <div className="management-list admin-storage-health">
   <div className="management-note"><b>Storage cleanup health</b><p>正式 travel order 從資料庫移除後，若 R2 暫時刪除失敗，系統會保留 tombstone 並持續重試。此頁不顯示實際 object key。</p></div>
