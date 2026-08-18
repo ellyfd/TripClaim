@@ -152,25 +152,37 @@ Audit 初始判定為 NO-GO；下列 code remediation 已完成：
 - [x] Runtime baseline `63536beb66927549ffac516087123f36c30589d9`（PR #83），CI run #109，build + Sites artifact validation + **133/133 tests** Pass。
 - [x] Audit code remediation 已關帳；Sites 上的 Critical Journey / destructive QA 不在 Sprint 9 再列第二份待辦，統一交由 Final Release Gate。
 
-完成定義：Sprint 9 code remediation 已完成；正式站是否解除 NO-GO 僅由 Final Release Gate 的 Sites destructive QA 與 48h observation 決定。
+完成定義：Sprint 9 的 P1 code remediation 已完成；其後 Audit P2 launch-hardening 由 Sprint 10 收尾。
+
+### Sprint 10：Audit Async / Performance Launch Hardening（P2）
+
+- [x] 行程 Save／Delete 加入明確 Loading → Success／Error lifecycle；mutation 期間鎖定重複送出，Save 失敗保留未儲存 draft。
+- [x] 文件列表 load failure 與真正 empty state 分離；Save／Delete 有 per-action pending lock、成功後 server reload confirmation 與可見錯誤。
+- [x] Card Evidence Matcher 移除 silent catch，加入 loading／error／retry 狀態，不再把候選載入失敗偽裝成「沒有可配對費用」。
+- [x] 31 天長行程 desktop grid 每次最多掛載 7 天，保留前／後 7 天切換；手機日期列仍可到達全部日期；預設 08:00–22:00 不變。
+- [x] 新增 `tests/audit-async-performance-regression.test.mjs`，並只調整舊 source-regex 以容許 busy guard，不弱化 rollback／Cancel 契約。
+- [x] Runtime baseline `fc584347383ab40b3c9fc62bbf99f948bb7e68a7`（PR #87），tested head `eef83256dcf123bf3fc9e19c8ef4a3e1a124140f`，CI run #116（run id `32107106389`），build + Sites artifact validation + **136/136 tests** Pass。
+
+完成定義：原 Audit 已知 async lifecycle 與長行程 DOM 掛載缺口完成 code-side hardening；沒有已知 Audit P1/P2 runtime backlog。正式站仍須依 Final Release Gate 驗證實際 Sites behavior 與效能體感。
 
 ### Final Release Gate（唯一未完成工作）
 
 目前 release baseline：
 
 - GitHub main 可包含高於 runtime 的 docs-only commit；不得因此誤認 runtime 已改變。
-- Runtime release candidate：`63536beb66927549ffac516087123f36c30589d9`（PR #83）。
-- CI baseline：run #109，build + Sites artifact validation + **133/133 tests** Pass。
+- Runtime release candidate：`fc584347383ab40b3c9fc62bbf99f948bb7e68a7`（PR #87）。
+- Tested head：`eef83256dcf123bf3fc9e19c8ef4a3e1a124140f`。
+- CI baseline：run #116（run id `32107106389`），build + Sites artifact validation + **136/136 tests** Pass。
 - D1 migration：`0023_pending_object_deletions.sql`。
 - 唯一 operational tracker：GitHub Issue **#85 `Final Sites UAT & 48h release gate`**。
 - 驗收紀錄：`docs/UAT_RELEASE_RECORD.md`；裝置矩陣：`docs/DEVICE_QA.md`。
 
-- [ ] **Gate A — Sites Publish / checkpoint + authenticated destructive UAT**：發布包含上述 runtime candidate 的 ChatGPT Sites 版本，記錄 Sites version/checkpoint，依 #85 與 UAT 文件完成 Audit Critical Journey、travel whole-order lifecycle、同檔重傳、住宿時間、一般報支 regression、storage health、export reconciliation 與 device QA。
-- [ ] **Gate B — 48h observation + GO / NO-GO**：Gate A PASS 後才開始 T+0／T+4h／T+24h／T+48h 觀察；不得出現 persistence、cross-trip stale render、travel ghost／restore、privacy、storage-health 或 financial reconciliation regression。
+- [ ] **Gate A — Sites Publish / checkpoint + authenticated destructive UAT**：發布包含上述 runtime candidate 的 ChatGPT Sites 版本，記錄 Sites version/checkpoint，依 #85 與 UAT 文件完成 Audit Critical Journey、async double-submit／failure lifecycle、31 天長行程 window、travel whole-order lifecycle、同檔重傳、住宿時間、一般報支 regression、storage health、export reconciliation 與 device QA。
+- [ ] **Gate B — 48h observation + GO / NO-GO**：Gate A PASS 後才開始 T+0／T+4h／T+24h／T+48h 觀察；不得出現 persistence、cross-trip stale render、duplicate mutation、travel ghost／restore、privacy、storage-health 或 financial reconciliation regression。
 
 執行規則：
 
-1. Final Release Gate 的 checkbox 只在 Issue #85 與 `docs/UAT_RELEASE_RECORD.md` 記錄實際證據；Sprint 8／9 不再建立重複 checklist。
+1. Final Release Gate 的 checkbox 只在 Issue #85 與 `docs/UAT_RELEASE_RECORD.md` 記錄實際證據；已完成 Sprint 不再建立重複 release checklist。
 2. GitHub merge、CI 全綠或 Sites artifact validation 都不等於 production Sites 已驗收。
 3. Gate A 若發現 runtime defect，停止 Gate，建立獨立 fix branch／PR 與 regression coverage；完整 CI 通過、重新發布 Sites 後，從受影響 destructive flow 重新開始 Gate A。
 4. Gate A 未 PASS 不得開始 48h observation；Gate B 未 PASS 不得標記 GO。
@@ -228,6 +240,9 @@ Audit 初始判定為 NO-GO；下列 code remediation 已完成：
 15. 文件搜尋無匹配時必須為 0 results；文件確認必須可取消／Esc 關閉。
 16. Overview 只能 aggregation，不可成為 Booking／Document／Expense／Agenda 的第二個可獨立修改 source。
 17. Desktop 與 mobile 必須維持同一 workspace IA。
+18. Save／Delete 等 mutation 進行中必須顯示 pending 狀態並鎖定重複送出；失敗不得被偽裝成成功或空資料。
+19. 文件 loading failure 必須與真正 0 文件／0 matcher candidate 分離，且提供可見 retry／error path。
+20. 31 天 desktop 行程不得一次掛載全部日期 grid；單一 window 最多 7 天，但所有日期在 desktop 與 mobile 都必須可到達。
 
 ## 六、北極星指標
 
