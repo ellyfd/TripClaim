@@ -2,13 +2,13 @@
 import {useCallback,useEffect,useRef,useState} from "react";
 import AgendaSheet,{blankForCell} from "./AgendaSheet";
 import BookingPanel from "./BookingPanel";
+import {calendarDatesForAgenda} from "./agenda-flight-layout.js";
 type Agenda={id:string;type:string;title:string;startsAt:string;endsAt?:string|null;timezone?:string|null;place?:string|null;address?:string|null;notes?:string|null;version:number};
-const dateRange=(start:string,end:string)=>{const out:string[]=[];for(let d=new Date(`${start}T12:00:00`),last=new Date(`${end}T12:00:00`);d<=last&&out.length<31;d.setDate(d.getDate()+1))out.push(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`);return out};
 const isSyncedTravel=(row:Agenda)=>Boolean(row.notes?.startsWith("booking:"));
 export default function ItineraryWizardLive({tripId}:{tripId:string}){
  const [rows,setRows]=useState<Agenda[]>([]),[dates,setDates]=useState<string[]>([]),[draft,setDraft]=useState<Agenda|null>(null),[status,setStatus]=useState("正在載入共同行程…"),[busy,setBusy]=useState<null|"save"|"delete">(null);
  const requestSeq=useRef(0);
- const load=useCallback(async(id:string)=>{if(!id)return false;const seq=++requestSeq.current;setStatus("正在載入共同行程…");try{const r=await fetch(`/api/trips/${id}/summary`);if(!r.ok)throw new Error("load_failed");const x=await r.json();if(seq!==requestSeq.current)return false;setRows(x.agenda??[]);setDates(x.trip?dateRange(x.trip.startsOn,x.trip.endsOn):[]);setStatus(x.agenda?.length?"已同步共同行程":"尚無行程，點表格空白處即可新增");return true}catch{if(seq!==requestSeq.current)return false;setRows([]);setDates([]);setStatus("載入失敗，請重新整理");return false}},[]);
+ const load=useCallback(async(id:string)=>{if(!id)return false;const seq=++requestSeq.current;setStatus("正在載入共同行程…");try{const r=await fetch(`/api/trips/${id}/summary`);if(!r.ok)throw new Error("load_failed");const x=await r.json();if(seq!==requestSeq.current)return false;const agenda=x.agenda??[];setRows(agenda);setDates(x.trip?calendarDatesForAgenda(x.trip.startsOn,x.trip.endsOn,agenda):[]);setStatus(agenda.length?"已同步共同行程":"尚無行程，點表格空白處即可新增");return true}catch{if(seq!==requestSeq.current)return false;setRows([]);setDates([]);setStatus("載入失敗，請重新整理");return false}},[]);
  useEffect(()=>{setRows([]);setDates([]);setDraft(null);setBusy(null);void load(tripId);return()=>{requestSeq.current++}},[tripId,load]);
  const updateDraft=(key:keyof Agenda,value:string)=>setDraft(row=>row?{...row,[key]:value}:row);
  const updateTime=(row:Agenda,key:"startsAt"|"endsAt",time:string)=>updateDraft(key,`${row.startsAt.slice(0,10)}T${time}`);
