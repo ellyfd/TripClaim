@@ -42,7 +42,7 @@
 
 - **正常**：pending = 0，或短暫出現後在後續 travel 操作／人工重試後回到 0。
 - **需觀察**：pending 未增加但最舊等待持續超過一個觀察週期；記錄 attempts 與最後錯誤後重試。
-- **停止擴大**：pending 持續增加、最舊等待超過 24 小時仍未清除，或同一筆 attempts 持續上升。
+- **停止擴大**：pending 持續增加、**最舊項目超過 24 小時**仍未清除，或同一筆 attempts 持續上升。
 - 系統健康頁不得顯示實際 object key；管理者只需看到 owner、Trip、來源、等待時間、attempts 與最後錯誤。
 
 ## 停止條件
@@ -66,7 +66,7 @@
 - 同一 travel 檔案刪除後重傳沒有 fresh document lifecycle，或同步後新舊 order 同時存在。
 - BR87 缺 `CDG` 或 `2026/06/16 08:05`；其他實際航段漏讀／日期時間錯誤。
 - 住宿不是 15:00 check-in／11:00 checkout。
-- Pending storage cleanup 持續增加或最舊項目 >24 小時。
+- Pending storage cleanup 持續增加或**最舊項目超過 24 小時**。
 
 出現任一條件即停止擴大，保留資料並修復；不得用手動刪資料掩蓋健康指標，也不得在 UAT record 勾 GO。
 
