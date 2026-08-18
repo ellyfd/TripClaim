@@ -50,6 +50,6 @@ export async function hardDeleteOrderGraph(input:DeleteOrderGraphInput){
   writes.push(db.delete(uploadedDocuments).where(and(eq(uploadedDocuments.ownerEmail,input.ownerEmail),eq(uploadedDocuments.tripId,input.tripId),inArray(uploadedDocuments.id,documentIds))));
  }
  if(writes.length)await db.batch(writes);
- const objectKeys=documents.map(document=>document.objectKey),objectCleanup=await deleteObjectKeysWithRetry(objectKeys),queueState=await reconcileQueuedObjectDeletionResult(objectKeys,objectCleanup);
+ const objectKeys=documents.map(document=>document.objectKey),objectCleanup=await deleteObjectKeysWithRetry(documents.map(document=>document.objectKey)),queueState=await reconcileQueuedObjectDeletionResult(objectKeys,objectCleanup);
  return {found:Boolean(seed||primaryDocument),bookingIds,documentId,documentIds,duplicateDocumentsDeleted:Math.max(0,documentIds.length-1),objectDeleted:objectCleanup.objectsDeleted>0,objectDeleteFailed:objectCleanup.objectDeleteFailures>0,objectsDeleted:objectCleanup.objectsDeleted,objectDeleteFailures:objectCleanup.objectDeleteFailures,failedObjectKeys:objectCleanup.failedObjectKeys,objectDeleteAttempts:objectCleanup.attemptsUsed,objectDeleteQueued:queueState.queued,priorCleanupRemaining:priorCleanup.remaining};
 }
