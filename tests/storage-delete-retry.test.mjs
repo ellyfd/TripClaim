@@ -14,18 +14,39 @@ test("R2 object deletion uses bounded retries and returns remaining keys",async(
  assert.match(source,/attemptsUsed/);
 });
 
-test("formal order deletion and replace start object cleanup only after the DB batch succeeds",async()=>{
- const [graph,replace]=await Promise.all([
+test("formal order deletion and replace track storage tombstones before DB graph removal",async()=>{
+ const [graph,replace,queue,migration]=await Promise.all([
   read("db/order-graph.ts"),
   read("app/api/trips/[id]/bookings/replace/route.ts"),
+  read("db/object-deletion-queue.ts"),
+  read("drizzle/0023_pending_object_deletions.sql"),
  ]);
  for(const source of [graph,replace]){
+  const tombstone=source.indexOf("queueObjectDeletionWrite");
   const batch=source.indexOf("await db.batch(writes)");
   const cleanup=source.indexOf("await deleteObjectKeysWithRetry",batch);
-  assert.ok(batch>=0&&cleanup>batch);
+  const reconcile=source.indexOf("await reconcileQueuedObjectDeletionResult",cleanup);
+  assert.ok(tombstone>=0&&batch>tombstone&&cleanup>batch&&reconcile>cleanup);
+  assert.match(source,/retryPendingObjectDeletions/);
  }
- assert.match(replace,/cleanupPending:objectCleanup\.objectDeleteFailures>0/);
- assert.match(replace,/objectDeleteAttempts:objectCleanup\.attemptsUsed/);
+ assert.match(queue,/pending_object_deletions/);
+ assert.match(queue,/onConflictDoUpdate/);
+ assert.match(queue,/deleteObjectKeysWithRetry\(rows\.map/);
+ assert.match(queue,/db\.delete\(pendingObjectDeletions\)/);
+ assert.match(migration,/object_key` text NOT NULL UNIQUE/);
+ assert.match(migration,/pending_object_deletions_owner_trip_idx/);
+ assert.match(replace,/cleanupPending:queueState\.queued>0/);
+ assert.match(replace,/cleanupQueued:queueState\.queued/);
+});
+
+test("successful formal storage cleanup clears tombstones while failed keys remain retryable",async()=>{
+ const source=await read("db/object-deletion-queue.ts");
+ assert.match(source,/const failed=new Set\(result\.failedObjectKeys\)/);
+ assert.match(source,/succeeded=keys\.filter\(key=>!failed\.has\(key\)\)/);
+ assert.match(source,/db\.delete\(pendingObjectDeletions\).*succeeded/s);
+ assert.match(source,/attempts:row\.attempts\+result\.attemptsUsed/);
+ assert.match(source,/lastError:`R2 delete failed after/);
+ assert.match(source,/remaining:remaining\.length/);
 });
 
 test("unlinked draft discard keeps its DB row when storage cleanup fails",async()=>{
