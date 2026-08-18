@@ -1,51 +1,82 @@
 # TripClaim 分階段發布與回復手冊
 
+目前 runtime release candidate：`63536beb66927549ffac516087123f36c30589d9`（PR #83，CI run #109，133/133 tests）。此版本包含 2026-08-18 Product / UX / Technical Audit 的 code remediation；**尚未完成 Sites 真人 destructive UAT，因此不能把 GitHub 合併視為正式站 GO。**
+
 ## 發布閘門
 
-- 程式：lint、build、全部測試與 CSS audit 通過。
-- 資料：migration 為 additive；未知主檔值進例外佇列，不靜默轉換。
-- 裝置：完成 `DEVICE_QA.md` 的自動檢核；內部測試帳號完成手機 smoke test。
-- UAT：完成 `UAT_RELEASE_RECORD.md`，記錄 Sites version、GitHub main SHA、migration、具名測試人、travel whole-order lifecycle、storage health、48h 觀察與 Go／No-Go。
-- 安全：附件只經登入授權串流，回應使用 `private, no-store` 與 `nosniff`。
-- 人員：通過 Sites 登入後由 TripClaim 自動建立一般使用者；停用帳號不可再次自動建立。
-- Storage：系統管理 → 系統健康可查看 pending object deletion；正式 travel 刪除不得產生無追蹤 R2 object。
+- **Runtime**：若 `63536beb...` 之後有任何 `app/`、`db/`、`drizzle/`、`public/`、runtime script 或 dependency 變更，必須重新建立完整 CI baseline；docs-only commit 不改 runtime candidate。
+- **程式**：build、全部 node tests、Sites artifact validation 與既有 security/travel regression 全綠。目前基線 133/133。
+- **Audit remediation**：行程 persistence、cross-trip stale state、文件搜尋／取消、create-draft lifecycle、shared/personal IA split 必須保留 regression guard。
+- **資料**：migration 為 additive；未知主檔值進例外佇列，不靜默轉換。
+- **裝置**：完成 `DEVICE_QA.md`；內部測試帳號完成 Safari、Chrome、PWA 與桌機 smoke/destructive QA。
+- **UAT**：完成 `UAT_RELEASE_RECORD.md`，記錄 Sites version、GitHub main SHA、runtime candidate、migration、具名測試人、Audit Critical Journey、travel lifecycle、storage health、匯出 reconciliation、48h 觀察與 Go／No-Go。
+- **安全**：附件只經登入授權串流，回應使用 `private, no-store` 與 `nosniff`。
+- **人員**：通過 Sites 登入後由 TripClaim 建立一般使用者；停用帳號不可再次自動建立。
+- **Storage**：系統管理 → 系統健康可查看 pending object deletion；正式 travel 刪除不得產生無追蹤 R2 object。
+
+## 發布順序
+
+1. **確認 GitHub baseline**：main 至少包含 runtime `63536beb...`；CI run #109 success；133/133。
+2. **ChatGPT Sites Publish/checkpoint**：由具 Sites 權限的人將包含此 runtime 的版本發布到 `https://quick-trip-claim.ellyfd.chatgpt.site/`，記錄 Sites version/checkpoint。
+3. **先做 Audit destructive QA**：
+   - Trip Overview 為預設入口。
+   - 新增／編輯一般活動 → 保存 → reload 一致。
+   - 兩趟 Trip 快速切換無 stale/default 日期。
+   - 文件搜尋無匹配 = 0 results；確認編輯可 Cancel／Esc。
+   - create draft 可保存離開、resume、放棄且 reload 不復活。
+   - desktop/mobile 都是出差／總覽／行程／準備／報支同一 IA。
+4. **再做 Travel destructive QA**：行前準備上傳來回票 → BR87/BR88 完整 → 同步 → 整單刪除 → reload 無 ghost → 同檔重傳 → 只有新 source order → hotel 15:00/11:00。
+5. **一般報支回歸**：一般收據、離線 queue、recoverable delete、文件確認、卡片、缺件、export reconciliation。
+6. **Storage health**：記錄 pending、最舊等待、最高 attempts；必要時執行管理者重試。
+7. 上述全部 Pass 才開始內部 3–5 人漸進啟用；任一 P1 data-state 問題重現立即 No-Go。
 
 ## 漸進啟用
 
-1. 內部 3–5 人：各完成一趟「行前 → 旅途中 → 回國後」演練，並至少一人完整填寫 `UAT_RELEASE_RECORD.md` 的 travel order 刪除／同檔重傳流程。
-2. 觀察 48 小時：上傳失敗率、OCR 待確認率、pending storage cleanup、匯出差額皆為可接受範圍；數據填入同一份 UAT release record。
-3. 每個觀察時段由管理者開啟「系統管理 → 系統健康」：記錄 pending 數量、最舊等待時間與最高 attempts。正常情況應回落至 0；若短暫出現 pending，可先執行「重試待清理附件」。
-4. 僅在 UAT 最終決策為 GO 時擴至一個部門；保留舊流程作為短期備援。
+1. 內部 3–5 人：各完成一趟「總覽 → 行前準備 → 行程 → 我的報支」演練；至少一人完整填寫 `UAT_RELEASE_RECORD.md`。
+2. 觀察 48 小時：上傳失敗率、OCR 待確認率、pending storage cleanup、匯出差額，以及 **stale/persistence issue 數**填入同一份 UAT record。
+3. 每個觀察時段由管理者開啟「系統管理 → 系統健康」，記錄 pending、最舊等待與最高 attempts。正常情況應回落至 0。
+4. 僅在 UAT 最終決策為 GO 時擴至一個部門；保留舊流程短期備援。
 5. 指標穩定後全面啟用；舊流程僅唯讀查詢。
 
 ## Storage cleanup 判讀
 
 - **正常**：pending = 0，或短暫出現後在後續 travel 操作／人工重試後回到 0。
 - **需觀察**：pending 未增加但最舊等待持續超過一個觀察週期；記錄 attempts 與最後錯誤後重試。
-- **停止擴大**：pending 持續增加、最舊等待超過 24 小時仍未清除，或同一筆 attempts 持續上升。這代表 R2 cleanup 已不是瞬時錯誤，需要先處理 storage／權限／服務異常。
+- **停止擴大**：pending 持續增加、最舊等待超過 24 小時仍未清除，或同一筆 attempts 持續上升。
 - 系統健康頁不得顯示實際 object key；管理者只需看到 owner、Trip、來源、等待時間、attempts 與最後錯誤。
 
 ## 停止條件
 
-- 任一使用者可讀到他人的個人附件或卡片資料。
-- 報支總額與明細不一致。
-- 原始幣別或原始文件遺失。
-- 上傳成功卻沒有文件或費用紀錄。
-- PWA 重啟後一般費用離線佇列遺失。
-- Travel order 刪除後仍可在 UI／legacy trash 復活。
-- 同一 travel 檔案刪除後重傳沒有取得新的 document ID，或同步後新舊 order 同時存在。
-- 機票實際航段漏讀、departure／arrival 日期時間錯誤，或住宿不是 15:00 check-in／11:00 checkout。
-- Pending storage cleanup 持續增加或最舊項目超過 24 小時仍無法清除。
+### Audit / data-state
 
-出現任一條件即停止擴大，保留資料並執行回復或修復；不得用手動刪資料掩蓋健康指標，也不得在 UAT record 上勾選 GO。
+- 新增或編輯一般活動在 reload 後消失、回到舊值，或未保存 draft 偽裝成已持久化資料。
+- 切換 Trip 時短暫顯示另一趟／預設日期，或舊 request 覆蓋目前 active trip。
+- 文件搜尋輸入無匹配字串仍顯示原文件。
+- 文件確認無法取消／Esc 關閉，或取消後未儲存修改仍被保存。
+- 建立出差「放棄草稿」後 reload 又復活；編輯既有 trip 污染 create draft。
+- Desktop／mobile 出現兩套互相矛盾的 IA，或 shared itinerary 再度混入 personal preparation ownership。
+
+### Privacy / finance / travel
+
+- 任一使用者可讀到他人的個人附件、卡片或報支資料。
+- 報支總額與明細／ZIP／manifest 不一致。
+- 原始幣別或原始文件遺失。
+- 一般費用上傳成功卻沒有文件／費用紀錄，或 PWA 重啟後離線 queue 遺失。
+- Travel order 刪除後仍可在 UI／legacy trash 復活。
+- 同一 travel 檔案刪除後重傳沒有 fresh document lifecycle，或同步後新舊 order 同時存在。
+- BR87 缺 `CDG` 或 `2026/06/16 08:05`；其他實際航段漏讀／日期時間錯誤。
+- 住宿不是 15:00 check-in／11:00 checkout。
+- Pending storage cleanup 持續增加或最舊項目 >24 小時。
+
+出現任一條件即停止擴大，保留資料並修復；不得用手動刪資料掩蓋健康指標，也不得在 UAT record 勾 GO。
 
 ## 回復演練
 
-1. 記錄目前 Sites `version_id`、GitHub main SHA、資料 migration 版本，以及系統健康 pending 數量。
+1. 記錄目前 Sites `version_id`、GitHub main SHA、實際 runtime candidate、migration 版本，以及系統健康 pending 數量。
 2. 從 Sites 部署紀錄選擇前一個已成功且通過驗收的版本重新部署。
-3. 不回滾資料庫 schema；新欄位保持向後相容，舊版忽略即可。`pending_object_deletions` 亦保留，避免回復版本時遺失未完成的 storage cleanup 記錄。
-4. 驗證登入、我的出差、文件下載、既有費用與匯出。
-5. 回復後重新檢查系統健康；若 pending 仍存在，由修復版本處理，不直接清空 tombstone。
-6. 對失敗版本建立修復分支；修復通過完整閘門後建立新的 `UAT_RELEASE_RECORD.md` 驗收紀錄，再漸進發布。
+3. 不回滾資料庫 schema；新增欄位保持向後相容。`pending_object_deletions` 必須保留。
+4. 驗證登入、全部出差、Overview、行程、行前準備、我的報支、文件下載、既有費用與匯出。
+5. 回復後重新檢查系統健康；pending 由修復版本處理，不直接清 tombstone。
+6. 對失敗版本建立修復分支；修復通過完整閘門後建立新的 UAT baseline，再漸進發布。
 
-正式回復會切換生產版本，只有在事故或獲得產品負責人明確授權時執行；日常發布只做流程演練與前一成功版本可用性確認。
+正式回復會切換生產版本，只有事故或產品負責人明確授權時執行；日常發布只做流程演練與前一成功版本可用性確認。
