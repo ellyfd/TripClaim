@@ -1,0 +1,39 @@
+/* 2026-08-18 product audit remediation: interaction integrity without inflating data-grid cells. */
+
+/* Action controls must meet the 44px touch target while dense calendar cells remain compact. */
+.trip-context-nav .back,
+.trip-row-actions button,
+.trip-more summary,
+.agenda-sheet-toolbar button,
+.agenda-item-actions button,
+.side-booking-actions button,
+.quick-booking-dialog button,
+.shared-booking-overview .booking-card footer a,
+.shared-booking-overview .booking-card footer button,
+.expense-workbench-page .expense-drawer-trigger,
+.expense-workbench-page .expense-upload-main,
+.expense-workbench-page .expense-type-buttons button,
+.expense-workbench-page .expense-side-actions button,
+.expense-workbench-page .mobile-expense-more button,
+.document-head-actions button,
+.document-row>a,
+.document-row>button,
+.document-editor-actions button,
+.missing-list article>button{
+ min-height:44px;
+}
+
+.trip-context-nav .back{min-width:44px;padding-inline:10px}
+.document-editor-actions{display:flex;gap:8px;align-items:center;margin-top:10px}
+.document-editor-actions button{padding-inline:14px}
+.missing-list article>button{margin-left:auto;padding:0 10px;border:1px solid #b7c9c0;border-radius:8px;background:#fff;color:var(--green);font-weight:800;white-space:nowrap}
+.booking-card .price.missing{color:var(--muted);font-weight:700}
+
+@media(max-width:800px){
+ .trip-context-nav{grid-template-columns:116px minmax(0,1fr)}
+ .trip-context-nav .back{width:108px;min-width:108px;height:44px;display:flex;align-items:center;justify-content:flex-start;padding:0 8px;font-size:13px;white-space:nowrap}
+ .document-editor-actions{position:sticky;bottom:0;padding-top:10px;background:inherit}
+ .document-editor-actions button{flex:1}
+ .missing-list article{grid-template-columns:auto minmax(0,1fr) auto}
+ .missing-list article>button{grid-column:2/4;width:100%;margin:6px 0 0}
+}
