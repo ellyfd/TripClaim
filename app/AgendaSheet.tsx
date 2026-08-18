@@ -20,7 +20,8 @@ export default function AgendaSheet({dates,rows,onAdd,onEdit,onDelete}:{dates:st
  const todayIndex=visibleDates.indexOf(new Date().toISOString().slice(0,10)),dayIndex=visibleDates.length?Math.min(selectedDayIndex??(todayIndex>=0?todayIndex:0),visibleDates.length-1):0;
  const windowStart=Math.floor(dayIndex/renderedDayLimit)*renderedDayLimit,renderDates=visibleDates.slice(windowStart,windowStart+renderedDayLimit),hasPreviousWindow=windowStart>0,hasNextWindow=windowStart+renderedDayLimit<visibleDates.length;
  const syncedFlights=useMemo(()=>rows.filter(row=>isSyncedFlight(row)),[rows]),requiresFullDay=useMemo(()=>syncedFlights.some(row=>flightRequiresFullDay(row)),[syncedFlights]),effectiveFullDay=requiresFullDay||showFullDay;
- const hours=[...topRows,...hourRows(effectiveFullDay?0:8,effectiveFullDay?23:22)],hiddenTimeCount=rows.filter(row=>row.type!=="全天"&&row.type!=="住宿"&&(Number(row.startsAt.slice(11,13))<8||Number(row.startsAt.slice(11,13))>22)).length;
+ const manualStartHour=showFullDay?0:8,manualEndHour=showFullDay?23:22,startHour=requiresFullDay?0:manualStartHour,endHour=requiresFullDay?23:manualEndHour;
+ const hours=[...topRows,...hourRows(startHour,endHour)],hiddenTimeCount=rows.filter(row=>row.type!=="全天"&&row.type!=="住宿"&&(Number(row.startsAt.slice(11,13))<8||Number(row.startsAt.slice(11,13))>22)).length;
  const flightSegmentsByCell=useMemo(()=>buildFlightSegments(visibleDates,rows),[visibleDates,rows]);
  const byCell=useMemo(()=>{const map=new Map<string,SheetAgenda[]>();for(const row of rows){if(isSyncedFlight(row))continue;const key=`${row.startsAt.slice(0,10)}|${cellKey(row)}`,list=map.get(key)??[];list.push(row);map.set(key,list)}return map},[rows]);
  const jumpWindow=(direction:-1|1)=>{const target=Math.max(0,Math.min(visibleDates.length-1,windowStart+direction*renderedDayLimit));setSelectedDayIndex(target);setScrolledX(false)};
