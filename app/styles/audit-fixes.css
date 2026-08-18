@@ -30,9 +30,8 @@
 .booking-card .price.missing{color:var(--muted);font-weight:700}
 
 @media(max-width:800px){
- .trip-context-nav{grid-template-columns:48px minmax(0,1fr)}
- .trip-context-nav .back{width:44px;min-width:44px;height:44px;display:grid;place-items:center;padding:0;overflow:hidden;font-size:0}
- .trip-context-nav .back::first-letter{font-size:20px}
+ .trip-context-nav{grid-template-columns:116px minmax(0,1fr)}
+ .trip-context-nav .back{width:108px;min-width:108px;height:44px;display:flex;align-items:center;justify-content:flex-start;padding:0 8px;font-size:13px;white-space:nowrap}
  .document-editor-actions{position:sticky;bottom:0;padding-top:10px;background:inherit}
  .document-editor-actions button{flex:1}
  .missing-list article{grid-template-columns:auto minmax(0,1fr) auto}
