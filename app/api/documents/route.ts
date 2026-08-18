@@ -8,6 +8,8 @@ import {masterDataExceptions,uploadedDocuments} from "../../../db/schema";
 import {MANAGED_AIRPORT_CODES,normalizeManagedAirportText} from "../../airport-directory";
 import {MASTER_DATA_VERSION} from "../../managed-config";
 import {validateExpenseMaster} from "../../master-data-validation";
+import {extractFlightSegments} from "../../travel-flight-parser.js";
+
 const allowed=new Set(["image/jpeg","image/png","image/webp","image/heic","image/heif","application/pdf"]);
 function hasAllowedSignature(bytes:ArrayBuffer,mime:string){
  const b=new Uint8Array(bytes),ascii=(from:number,to:number)=>String.fromCharCode(...b.slice(from,to));
@@ -70,18 +72,11 @@ function parseDocument(text:string,fileName:string,kind:string){
   const duration=details.match(/(?:Duration|飛行時間)\s*[:：]?\s*(\d{1,2}:\d{2})/i)?.[1]??null;
   return [{title:`${match[3]}${match[4]} ${match[1]} → ${match[2]}`,startAt:`${segmentDates[0]}T${match[5].replace(".",":")}`,endAt:`${segmentDates[1]}T${match[6].replace(".",":")}`,origin:match[1],destination:match[2],duration}];
  });
- // EVA 等電子機票常把 terminal 放在機場與日期之間；以航班號＋時間＋日期為第二錨點。
+ // Flight-centric parser resolves each flight independently. Unlike the old anchored regex,
+ // terminal/class/fare text may appear between route, dates and times without dropping the leg.
+ const flightCentric=isFlight?extractFlightSegments(source,(code:string)=>MANAGED_AIRPORT_CODES.has(code)):[];
+ const allSegments=[...segments,...flightCentric].filter((segment,index,array)=>array.findIndex(item=>item.title===segment.title&&item.startAt===segment.startAt&&item.endAt===segment.endAt)===index).sort((a,b)=>a.startAt.localeCompare(b.startAt));
  const MONTHS="(?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)";
- const anchored=[...source.matchAll(new RegExp(String.raw`\b([A-Z]{2})\s?(\d{2,4})\s+([0-2]?\d[:.]\d{2})\s+(\d{1,2}${MONTHS}\d{2,4})\s+([0-2]?\d[:.]\d{2})\s+(\d{1,2}${MONTHS}\d{2,4})\b`,"gi"))].flatMap(match=>{
-  const before=source.slice(Math.max(0,(match.index??0)-220),match.index).toUpperCase();
-  const codes=[...before.matchAll(/\b([A-Z]{3})\b/g)].map(x=>x[1]).filter(code=>MANAGED_AIRPORT_CODES.has(code));
-  const origin=codes.at(-2),destination=codes.at(-1);
-  if(!origin||!destination||origin===destination)return [];
-  const startDate=compactDate(match[4]),endDate=compactDate(match[6]);
-  if(!startDate||!endDate)return [];
-  return [{title:`${match[1].toUpperCase()}${match[2]} ${origin} → ${destination}`,startAt:`${startDate}T${match[3].replace(".",":")}`,endAt:`${endDate}T${match[5].replace(".",":")}`,origin,destination,duration:null as string|null}];
- });
- const allSegments=[...segments,...anchored].filter((segment,index,array)=>array.findIndex(item=>item.title===segment.title&&item.startAt===segment.startAt&&item.endAt===segment.endAt)===index).sort((a,b)=>a.startAt.localeCompare(b.startAt));
  const hotel=source.match(/(?:HOTEL|住宿|PROPERTY|飯店)\s*[:：-]?\s*([A-Z0-9][A-Z0-9 '&.,-]{3,55})/i);
  const stayDateToken=String.raw`(20\d{2}[\/.-]\d{1,2}[\/.-]\d{1,2}|\d{1,2}${MONTHS}\d{2,4})`;
  const checkInRaw=source.match(new RegExp(String.raw`(?:CHECK[- ]?IN|入住).{0,45}?${stayDateToken}`,"i"))?.[1]??null;
