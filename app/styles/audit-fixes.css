@@ -18,7 +18,8 @@
 .document-row>a,
 .document-row>button,
 .document-editor-actions button,
-.missing-list article>button{
+.missing-list article>button,
+.wizard-exit-actions button{
  min-height:44px;
 }
 
@@ -29,6 +30,10 @@
 .booking-card .price.missing{color:var(--muted);font-weight:700}
 .expense-upload-type{display:grid;gap:5px;margin:10px 0 8px;color:var(--muted);font-size:12px;font-weight:700}
 .expense-upload-type select{min-height:44px;width:100%;padding:0 10px;border:1px solid #b9cbc2;border-radius:8px;background:#fff;color:var(--ink);font:inherit}
+.wizard-exit-actions{max-width:1180px;margin:0 auto 10px;display:flex;gap:8px;align-items:center;justify-content:space-between}
+.wizard-exit-actions .back-to-trips{position:static;margin:0}
+.wizard-exit-actions .discard-draft{margin-left:auto;padding:0 14px;border:1px solid #d7b9b2;border-radius:8px;background:#fff;color:#8a3b2f;font-weight:800}
+.draft-lifecycle-note{display:block;margin-top:7px;color:var(--muted);font-weight:650}
 
 @media(max-width:800px){
  .trip-context-nav{grid-template-columns:116px minmax(0,1fr)}
@@ -37,4 +42,6 @@
  .document-editor-actions button{flex:1}
  .missing-list article{grid-template-columns:auto minmax(0,1fr) auto}
  .missing-list article>button{grid-column:2/4;width:100%;margin:6px 0 0}
+ .wizard-exit-actions{padding:0 12px;align-items:stretch}
+ .wizard-exit-actions button{flex:1}
 }
