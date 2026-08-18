@@ -19,7 +19,9 @@
 .document-row>button,
 .document-editor-actions button,
 .missing-list article>button,
-.wizard-exit-actions button{
+.wizard-exit-actions button,
+.trip-overview-page button,
+.trip-preparation-page button{
  min-height:44px;
 }
 
@@ -35,6 +37,42 @@
 .wizard-exit-actions .discard-draft{margin-left:auto;padding:0 14px;border:1px solid #d7b9b2;border-radius:8px;background:#fff;color:#8a3b2f;font-weight:800}
 .draft-lifecycle-note{display:block;margin-top:7px;color:var(--muted);font-weight:650}
 
+/* Audit IA: one trip workspace model on desktop and mobile. */
+.topbar nav[aria-label="Trip workspace"]{gap:4px;margin-left:14px}
+.topbar nav[aria-label="Trip workspace"] button{min-width:88px;padding-inline:10px}
+.topbar nav[aria-label="Trip workspace"] button:nth-child(4){min-width:104px}
+.agenda-workspace.shared-only{display:block}
+.agenda-workspace.shared-only .agenda-workspace-main{width:100%}
+
+.trip-overview-page,.trip-preparation-page{width:min(1180px,calc(100% - 64px));margin:26px auto 84px}
+.trip-overview-hero,.preparation-head{display:flex;align-items:end;justify-content:space-between;gap:24px;margin-bottom:10px}
+.trip-overview-hero span,.preparation-head span,.overview-card>span,.overview-next>span,.overview-ownership>span{font-size:12px;color:var(--green);font-weight:850;letter-spacing:.02em}
+.trip-overview-hero h1,.preparation-head h1{margin:3px 0;font-size:28px;line-height:1.2}
+.trip-overview-hero p,.preparation-head p{margin:0;color:var(--muted);font-size:14px}
+.trip-overview-hero>button{padding:0 18px;border:0;border-radius:9px;background:var(--green);color:white;font-weight:850;white-space:nowrap}
+.overview-sync{margin:0 0 14px;color:var(--muted);font-size:12px}
+.overview-status-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.overview-card{min-height:205px;padding:18px;border:1px solid var(--line);border-radius:12px;background:white;display:flex;flex-direction:column;align-items:flex-start}
+.overview-card strong{margin:10px 0 2px;color:var(--green);font-size:34px;line-height:1}
+.overview-card p{min-height:44px;margin:7px 0 16px;color:var(--muted);font-size:13px;line-height:1.5}
+.overview-card button,.overview-detail-grid button{margin-top:auto;padding:0 14px;border:1px solid #b8cbc2;border-radius:8px;background:white;color:var(--green);font-weight:850}
+.overview-detail-grid{display:grid;grid-template-columns:1.2fr .8fr;gap:12px;margin-top:12px}
+.overview-detail-grid>.panel{padding:18px}
+.overview-detail-grid h2{margin:5px 0;font-size:18px}
+.overview-detail-grid p{margin:5px 0 12px;color:var(--muted);line-height:1.55}
+.overview-detail-grid small{color:var(--muted)}
+.preparation-grid{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(280px,.6fr);gap:14px;align-items:start}
+.trip-preparation-page .trip-todo-panel,.trip-preparation-page .comp-leave-panel{margin:0}
+.preparation-boundary{margin-top:14px;padding:16px 18px}
+.preparation-boundary b{color:var(--green)}
+.preparation-boundary p{margin:6px 0 0;color:var(--muted);line-height:1.55}
+
+@media(max-width:1200px) and (min-width:801px){
+ .topbar nav[aria-label="Trip workspace"] button{min-width:72px;padding-inline:7px;font-size:13px}
+ .topbar nav[aria-label="Trip workspace"] button:nth-child(4){min-width:92px}
+ .topbar nav[aria-label="Trip workspace"] button i{display:none}
+}
+
 @media(max-width:800px){
  .trip-context-nav{grid-template-columns:116px minmax(0,1fr)}
  .trip-context-nav .back{width:108px;min-width:108px;height:44px;display:flex;align-items:center;justify-content:flex-start;padding:0 8px;font-size:13px;white-space:nowrap}
@@ -44,4 +82,15 @@
  .missing-list article>button{grid-column:2/4;width:100%;margin:6px 0 0}
  .wizard-exit-actions{padding:0 12px;align-items:stretch}
  .wizard-exit-actions button{flex:1}
+ .workspace-mobile-nav .camera{margin-top:0}
+ .workspace-mobile-nav button{min-width:0;min-height:52px}
+ .workspace-mobile-nav i{width:auto;height:auto;border:0;box-shadow:none;background:none;color:inherit}
+ .trip-overview-page,.trip-preparation-page{width:auto;margin:18px 12px calc(92px + env(safe-area-inset-bottom))}
+ .trip-overview-hero,.preparation-head{display:block}
+ .trip-overview-hero h1,.preparation-head h1{font-size:24px}
+ .trip-overview-hero>button{width:100%;margin-top:14px}
+ .overview-status-grid,.overview-detail-grid,.preparation-grid{grid-template-columns:1fr}
+ .overview-card{min-height:0}
+ .overview-card p{min-height:0}
+ .trip-preparation-page .trip-todo-panel,.trip-preparation-page .comp-leave-panel{width:100%}
 }
