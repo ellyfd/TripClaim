@@ -14,12 +14,13 @@ const isSyncedTravel=(item:SheetAgenda)=>Boolean(item.notes?.startsWith("booking
 
 export default function AgendaSheet({dates,rows,onAdd,onEdit,onDelete}:{dates:string[];rows:SheetAgenda[];onAdd:(date:string,time:string)=>void;onEdit:(row:SheetAgenda)=>void;onDelete:(row:SheetAgenda)=>void}){
  const [selectedDayIndex,setSelectedDayIndex]=useState<number|null>(null),[importMessage,setImportMessage]=useState(""),[density,setDensity]=useState<"overview"|"edit">("overview"),[showFullDay,setShowFullDay]=useState(false),[scrolledX,setScrolledX]=useState(false);const fileRef=useRef<HTMLInputElement>(null),imageRef=useRef<HTMLInputElement>(null);
- const visibleDates=dates.length?dates:["2026-06-16"];
- const todayIndex=visibleDates.indexOf(new Date().toISOString().slice(0,10)),dayIndex=Math.min(selectedDayIndex??(todayIndex>=0?todayIndex:0),visibleDates.length-1);
+ const visibleDates=dates;
+ const todayIndex=visibleDates.indexOf(new Date().toISOString().slice(0,10)),dayIndex=visibleDates.length?Math.min(selectedDayIndex??(todayIndex>=0?todayIndex:0),visibleDates.length-1):0;
  const hours=[...topRows,...hourRows(showFullDay?0:8,showFullDay?23:22)],hiddenTimeCount=rows.filter(row=>row.type!=="全天"&&row.type!=="住宿"&&(Number(row.startsAt.slice(11,13))<8||Number(row.startsAt.slice(11,13))>22)).length;
  const byCell=useMemo(()=>{const map=new Map<string,SheetAgenda[]>();for(const row of rows){const key=`${row.startsAt.slice(0,10)}|${cellKey(row)}`,list=map.get(key)??[];list.push(row);map.set(key,list)}return map},[rows]);
  const importFile=async(file?:File)=>{if(!file)return;const ext=file.name.split(".").pop()?.toLowerCase();if(ext!=="csv"){setImportMessage(`已接收 ${file.name}；將先轉成欄位預覽，再用公司主檔驗證後匯入。`);return}const lines=(await file.text()).split(/\r?\n/).filter(Boolean),headers=(lines.shift()??"").split(",").map(x=>x.trim().replace(/^"|"$/g,"")),rows=lines.map(line=>Object.fromEntries(line.split(",").map((value,index)=>[headers[index],value.trim().replace(/^"|"$/g,"")])));const locationRows=rows.filter(row=>row.countryCode||row.countryName||row.cityName),invalid=locationRows.filter(row=>!validateDestinationMaster({countryCode:row.countryCode,countryName:row.countryName,cityName:row.cityName}).valid);setImportMessage(invalid.length?`已讀取 ${rows.length} 列；${invalid.length} 列地點無法對應公司主檔，將進例外清單，不會直接匯入。`:`已讀取 ${rows.length} 列；主檔驗證通過，下一步預覽後再加入行程。`)};
  const imageFile=(file?:File)=>{if(!file)return;setImportMessage(`已接收 ${file.name}；截圖／PDF會先轉成表格預覽，低信心欄位需人工確認。`)};
+ if(!visibleDates.length)return <section className="agenda-sheet-wrap"><div className="panel" role="status" aria-live="polite"><b>正在載入這趟出差的行程</b><p>取得正確的出差日期前，不顯示其他旅程或預設日期。</p></div></section>;
  return <section className="agenda-sheet-wrap">
   <div className="agenda-sheet-toolbar">
    <div><b><span className="desktop-agenda-title">共同行程表</span><span className="mobile-agenda-title">今日行程</span></b><span>點空白格新增；一般活動可直接編輯，機票／住宿由原始訂單同步</span></div>
