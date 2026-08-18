@@ -88,13 +88,13 @@
 ### Sprint 5：PWA 收件匣與 OCR Pipeline（P0）
 
 - [x] 拍照後先存 IndexedDB，一秒內顯示「已保存，辨識中」。
-- [x] 建立 client job ID 與 retry queue；每次 travel 重傳都建立新的 document ID。`contentHash` 僅保留作稽核、PWA 重送判斷與清除歷史 byte-identical ghost copies，不得用來重新載入／重用舊 travel document。
-- [x] 離線可繼續拍照，背景同步或恢復連線後續傳。
+- [x] 建立 client job ID 與 retry queue；一般費用附件維持離線 queue；travel 上傳必須在線取得新的 server document ID，離線不背景補傳。每次 travel 重傳都建立新的 document ID。`contentHash` 僅保留作稽核與清除歷史 byte-identical ghost copies，不得用來重新載入／重用舊 travel document。
+- [x] 一般費用離線可繼續拍照，背景同步或恢復連線後續傳；travel 離線時明確要求恢復連線後重新上傳。
 - [x] 圖片方向校正、長邊縮至 2200px、壓縮與清晰度檢查後再 OCR；模糊時要求人工確認。
 - [x] PDF 優先讀文字層；無文字層的掃描檔明確標示待確認；圖片 OCR worker 跨檔案重複使用。
 - [x] OCR 保存 raw text、candidate、confidence、mapping reason 與 confirmed value。
 
-完成定義：手機兩次點擊內完成上傳；一秒內獲得保存回饋；離線重啟後可續傳；重新上傳同檔案不得讓已刪除 travel order 回魂。
+完成定義：手機兩次點擊內完成上傳；一般費用一秒內獲得保存回饋且離線重啟後可續傳；travel 離線不產生失聯文件；重新上傳同檔案不得讓已刪除 travel order 回魂。
 
 ### Sprint 6：桌機工作台與 IA 重排（P1）
 
@@ -140,7 +140,7 @@
 5. Travel order 不使用 soft delete restore；legacy trash API 不得復活 travel booking、travel document、agenda 或 travel expense。
 6. 「確認並同步」不是 append；必須以 whole-order replace 取代本人同類舊 travel order，並讓所有相關 panel 重新載入。
 7. 住宿行程以入住日 15:00 作為 startsAt、退房日 11:00 作為 endsAt；城市與地址可選填，不得阻擋同步。
-8. `contentHash` 不是訂單身份。它只能用於稽核、重送防護及刪除歷史 byte-identical ghost copies，不得用來載入舊 order 成為 active source。
+8. `contentHash` 不是訂單身份。它只能用於稽核及刪除歷史 byte-identical ghost copies，不得用來載入舊 order 成為 active source。
 9. 正式 travel attachment 的 D1 graph 刪除與 object deletion tombstone 必須同 batch；R2 失敗只能形成「已追蹤待清理」，不得形成無記錄 orphan object。
 10. Travel booking 的完成狀態由正式 booking evidence 管理，使用者不能靠手動勾選 TODO 偽造已完成。
 
