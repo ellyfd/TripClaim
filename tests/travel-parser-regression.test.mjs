@@ -1,15 +1,55 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {readFile} from "node:fs/promises";
+import {extractFlightSegments} from "../app/travel-flight-parser.js";
 
 const read=path=>readFile(new URL(`../${path}`,import.meta.url),"utf8");
 
-test("EVA-style anchored parsing remains available and merges all detected flight segments",async()=>{
+test("EVA round-trip parser returns complete BR87 outbound and BR88 return values",()=>{
+ const managed=new Set(["TPE","CDG"]);
+ // BR87 deliberately uses date-before-time plus cabin/terminal text. The old strict anchored regex
+ // could miss this leg while still matching the contiguous BR88 return layout.
+ const source=[
+  "TAIPEI TPE TERMINAL 2 PARIS CDG TERMINAL 1",
+  "BR87 ECONOMY CLASS Y 15JUN2026 DEPARTURE 23:30 ARRIVAL 16JUN2026 08:05",
+  "PARIS CDG TERMINAL 1 TAIPEI TPE TERMINAL 2",
+  "BR88 11:20 25JUN2026 06:55 26JUN2026",
+ ].join(" ");
+ const segments=extractFlightSegments(source,code=>managed.has(code));
+ assert.equal(segments.length,2);
+ assert.deepEqual(segments[0],{
+  title:"BR87 TPE → CDG",
+  origin:"TPE",
+  destination:"CDG",
+  startAt:"2026-06-15T23:30",
+  endAt:"2026-06-16T08:05",
+  duration:null,
+ });
+ assert.deepEqual(segments[1],{
+  title:"BR88 CDG → TPE",
+  origin:"CDG",
+  destination:"TPE",
+  startAt:"2026-06-25T11:20",
+  endAt:"2026-06-26T06:55",
+  duration:null,
+ });
+});
+
+test("EVA compact HHMM text layer also returns complete outbound values",()=>{
+ const managed=new Set(["TPE","CDG"]);
+ const source="TPE TERMINAL 2 CDG TERMINAL 1 BR87 CABIN Y 15JUN2026 2330 16JUN2026 0805";
+ const [segment]=extractFlightSegments(source,code=>managed.has(code));
+ assert.equal(segment?.origin,"TPE");
+ assert.equal(segment?.destination,"CDG");
+ assert.equal(segment?.startAt,"2026-06-15T23:30");
+ assert.equal(segment?.endAt,"2026-06-16T08:05");
+});
+
+test("document route uses flight-centric parsing and merges all detected flight segments",async()=>{
  const source=await read("app/api/documents/route.ts");
- assert.match(source,/const anchored=\[\.\.\.source\.matchAll/);
- assert.doesNotMatch(source,/const anchored=segments\.length\?\[\]:/);
- assert.match(source,/origin=codes\.at\(-2\),destination=codes\.at\(-1\)/);
- assert.match(source,/const allSegments=\[\.\.\.segments,\.\.\.anchored\]/);
+ assert.match(source,/extractFlightSegments/);
+ assert.match(source,/const flightCentric=isFlight\?extractFlightSegments/);
+ assert.match(source,/const allSegments=\[\.\.\.segments,\.\.\.flightCentric\]/);
  assert.match(source,/findIndex\(item=>item\.title===segment\.title&&item\.startAt===segment\.startAt&&item\.endAt===segment\.endAt\)/);
  assert.match(source,/sort\(\(a,b\)=>a\.startAt\.localeCompare\(b\.startAt\)\)/);
  assert.match(source,/segments:allSegments/);
