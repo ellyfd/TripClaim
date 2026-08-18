@@ -89,8 +89,8 @@ test("primary shell exposes one three-stage workflow and adaptive workbench",asy
  ]);
  assert.match(page,/aria-label="主要流程"/);
  assert.match(page,/<i>1<\/i>我的出差/);
- assert.match(page,/<i>2<\/i>共同行程/);
- assert.match(page,/<i>3<\/i>我的報帳/);
+ assert.match(page,/<i>2<\/i>行程/);
+ assert.match(page,/<i>3<\/i>我的報支/);
  assert.match(styles,/--app-max:1440px/);
  assert.match(styles,/--aside-width:288px/);
  assert.match(styles,/grid-template-columns:minmax\(0,1fr\) var\(--aside-width\)/);
@@ -137,7 +137,7 @@ test("document extraction preserves AI evidence and human confirmation",async()=
 test("manual flight registration starts with outbound and return segments",async()=>{
  const source=await read("app/TripTodoPanel.tsx");
  assert.match(source,/(?:next|base)==="flight"\?\[blankLeg\(\),blankLeg\(\)\]/);
- assert.match(source,/來回票只建立一筆本人報支/);
+ assert.match(source,/來回／多航段只建立一筆本人報支/);
  assert.match(source,/新增轉機航段/);
 });
 
