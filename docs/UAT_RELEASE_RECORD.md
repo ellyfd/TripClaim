@@ -6,9 +6,9 @@
 
 ## A. Release candidate 基線
 
-### A1. GitHub／CI 已驗證
+### A1. Runtime／CI 已驗證
 
-- Release candidate main SHA：`8a2195013b0cb5e393541f597612cd3c39a270a1`
+- **Runtime release candidate SHA**：`8a2195013b0cb5e393541f597612cd3c39a270a1`
 - 對應 PR：`#76 Fix EVA outbound flight parsing and add executable regression`
 - CI tested head：`d4ae1f5706c7beebc072d17bcc7636157c14366e`
 - GitHub Actions：Auto test & merge `run #99`・success
@@ -18,13 +18,13 @@
 - D1 migration 最新版本：`0023_pending_object_deletions.sql`
 - Execution Plan 最後更新：2026-08-18
 
-本 release candidate 新增可執行 EVA regression：
+本 runtime candidate 新增可執行 EVA regression：
 
 - [x] BR87 `TPE → CDG`，`2026-06-15 23:30 → 2026-06-16 08:05` exact-value fixture Pass。
 - [x] BR88 `CDG → TPE`，`2026-06-25 11:20 → 2026-06-26 06:55` exact-value fixture Pass。
 - [x] EVA compact `HHMM` text layer 的 BR87 outbound fixture Pass。
 
-> 若 Sites 發布前 main 又有新 commit，以上 release candidate 立即失效，必須以新的 main SHA／CI 結果重建本區基線，不可沿用舊紀錄。
+> **基線判定規則**：`docs/`、README、UAT 紀錄等純文件 commit 可以繼續合併，不會改變 runtime candidate。若 `8a219501...` 之後有任何會影響執行結果的程式／schema／build commit（例如 `app/`、`db/`、`drizzle/`、`public/`、runtime scripts、dependencies），才必須以新的 runtime SHA 重跑完整 CI 並重建本區基線。
 
 ### A2. 本次 Sites 驗收
 
@@ -32,7 +32,8 @@
 - 驗收人：
 - Sites production URL：`https://quick-trip-claim.ellyfd.chatgpt.site/`
 - Sites version / checkpoint：
-- GitHub main SHA（發布當下再次確認）：
+- GitHub main SHA（發布當下留存稽核；docs-only commit 可高於 runtime candidate）：
+- 實際 runtime candidate：`8a2195013b0cb5e393541f597612cd3c39a270a1`
 - 瀏覽器／裝置：
 - 測試 Trip ID：
 
@@ -211,7 +212,7 @@
 - [ ] 原始幣別或原始文件遺失。
 - [ ] 系統健康 API／頁面無法使用。
 - [ ] Pending storage cleanup 持續增加或最舊項目 >24 小時仍未清除。
-- [ ] 發布當下 GitHub main SHA 與 Section A release candidate 不一致但沒有重新跑 CI／重建基線。
+- [ ] Runtime candidate `8a219501...` 之後出現程式／schema／build 變更，但沒有以新的 runtime SHA 重跑完整 CI 與重建 release baseline。
 
 最終決策：**☐ GO　☐ NO-GO**
 
