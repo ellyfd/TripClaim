@@ -52,8 +52,17 @@
 .flight-duration-segment b{font-size:11px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .flight-duration-segment span{font-size:10px;line-height:1.15;color:#4d6478;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .flight-duration-segment .flight-arrival{margin-top:auto;color:#294f71;font-weight:850}
+.flight-duration-segment .flight-timezone-meta{display:block;color:#315a7d;font-size:9px;line-height:1.2;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .flight-duration-segment>button{position:absolute;right:3px;top:2px;width:22px;height:22px;border:0;background:transparent;color:#8f554a;font-size:17px;line-height:1}
 .flight-duration-segment:not(.segment-flight-start)>button{display:none}
+
+/* Flight endpoint timezone editor: three fields per endpoint, with the arrow as a separator. */
+.quick-booking-dialog .flight-route-block{grid-template-columns:minmax(92px,.72fr) minmax(155px,1.08fr) minmax(145px,1fr) 24px minmax(92px,.72fr) minmax(155px,1.08fr) minmax(145px,1fr);gap:7px;align-items:end}
+.quick-booking-dialog .flight-route-block input{min-width:0;min-height:44px}
+.quick-booking-dialog .flight-route-block>i{grid-column:4;grid-row:1;height:44px}
+.booking-leg-list>div{display:grid;gap:2px}
+.booking-leg-list>div+div{margin-top:7px}
+.booking-leg-list small{display:block}
 
 /* Audit IA: one trip workspace model on desktop and mobile. */
 .topbar nav[aria-label="Trip workspace"]{gap:4px;margin-left:14px}
@@ -89,6 +98,8 @@
  .topbar nav[aria-label="Trip workspace"] button{min-width:72px;padding-inline:7px;font-size:13px}
  .topbar nav[aria-label="Trip workspace"] button:nth-child(4){min-width:92px}
  .topbar nav[aria-label="Trip workspace"] button i{display:none}
+ .quick-booking-dialog .flight-route-block{grid-template-columns:repeat(3,minmax(0,1fr));}
+ .quick-booking-dialog .flight-route-block>i{display:none}
 }
 
 @media(max-width:800px){
@@ -118,4 +129,7 @@
  .flight-duration-segment{padding:4px 27px 4px 8px}
  .flight-duration-segment b{font-size:13px}
  .flight-duration-segment span{font-size:12px}
+ .flight-duration-segment .flight-timezone-meta{font-size:11px}
+ .quick-booking-dialog .flight-route-block{grid-template-columns:1fr 1fr!important}
+ .quick-booking-dialog .flight-route-block>i{display:none!important}
 }
