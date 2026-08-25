@@ -12,8 +12,12 @@ test("booking comparison groups attached legs by source document and manual legs
  assert.match(source,/legs:\[\.\.\.order\.legs\]\.sort\(\(a,b\)=>a\.startAt\.localeCompare\(b\.startAt\)\)/);
 });
 
-test("comparison renders one card per order with all flight legs inside",async()=>{
+test("booking details stay secondary to calendar but retain one card per order",async()=>{
  const source=await read("app/BookingPanel.tsx");
+ assert.match(source,/return <details className="shared-booking-details">/);
+ assert.doesNotMatch(source,/return <details[^>]*\sopen(?:=|>)/);
+ assert.match(source,/同行者機票／住宿明細/);
+ assert.match(source,/共同行程時間以 Calendar 為主/);
  assert.match(source,/const orders=useMemo\(\(\)=>groupBookingOrders\(items\),\[items\]\)/);
  assert.match(source,/orders\.map\(order=>/);
  assert.doesNotMatch(source,/items\.map\(x=><article/);
