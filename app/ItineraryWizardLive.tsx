@@ -13,7 +13,7 @@ export default function ItineraryWizardLive({tripId}:{tripId:string}){
  useEffect(()=>{setRows([]);setDates([]);setDraft(null);setBusy(null);void load(tripId);return()=>{requestSeq.current++}},[tripId,load]);
  const updateDraft=(key:keyof Agenda,value:string)=>setDraft(row=>row?{...row,[key]:value}:row);
  const updateTime=(row:Agenda,key:"startsAt"|"endsAt",time:string)=>updateDraft(key,`${row.startsAt.slice(0,10)}T${time}`);
- const toggleAllDay=(row:Agenda,checked:boolean)=>setDraft({...row,type:checked?"全天":row.type==="全天"?"會議":row.type,endsAt:checked?null:row.endsAt});
+ const toggleAllDay=(row:Agenda,checked:boolean)=>setDraft({...row,type:checked?"全天":row.type==="全天"?"會議":row.type,startsAt:`${row.startsAt.slice(0,10)}T${checked?"00:00":row.type==="全天"?"09:00":row.startsAt.slice(11,16)}`,endsAt:checked?null:row.endsAt});
  const add=()=>{if(busy||!tripId||!dates.length)return;setDraft(blankForCell(dates[0],"09:00"));setStatus("尚未儲存；完成資料後按保存")};
  const addAt=(date:string,time:string)=>{if(busy)return;setDraft(blankForCell(date,time));setStatus("尚未儲存；完成資料後按保存")};
  const edit=(row:Agenda)=>{if(busy)return;if(isSyncedTravel(row)){setStatus("機票與住宿由來源訂單同步，請到「行前準備」修改自己的訂單");return}setDraft({...row});setStatus("正在編輯；按保存後才會同步給同行者")};

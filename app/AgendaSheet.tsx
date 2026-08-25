@@ -44,7 +44,7 @@ export default function AgendaSheet({dates,rows,onAdd,onEdit,onDelete}:{dates:st
   <div className="agenda-mobile-days">{visibleDates.map((d,i)=><button className={i===dayIndex?"on":""} key={d} onClick={()=>{setSelectedDayIndex(i);setScrolledX(false)}}>{dayLabel(d)}</button>)}</div>
   <div className="agenda-sheet-scrollwrap">
   {renderDates.length>4&&!scrolledX&&<span className="sheet-scroll-more" aria-hidden="true">→ 橫向捲動看此段更多天</span>}
-  <div className="agenda-sheet density-overview" onScroll={e=>{if(e.currentTarget.scrollLeft>40)setScrolledX(true)}}>
+  <div className="agenda-sheet" onScroll={e=>{if(e.currentTarget.scrollLeft>40)setScrolledX(true)}}>
    <div className="agenda-grid" style={{gridTemplateColumns:`76px repeat(${renderDates.length}, minmax(154px, 1fr))`}}>
     <div className="sheet-corner">時間</div>{renderDates.map((d,i)=>{const originalIndex=windowStart+i;return <div className={`sheet-date ${originalIndex===dayIndex?"mobile-active":""}`} key={d}>{dayLabel(d)}</div>})}
     {hours.map(time=><div className="sheet-row" key={time}>
@@ -64,4 +64,4 @@ export default function AgendaSheet({dates,rows,onAdd,onEdit,onDelete}:{dates:st
  </section>;
 }
 
-export const blankForCell=(date:string,time:string):SheetAgenda=>({id:`new-${Date.now()}`,type:typeFor(time),title:"",startsAt:`${date}T${time==="全天"||time==="住宿"?"09:00":time}`,timezone:"",place:"",version:0});
+export const blankForCell=(date:string,time:string):SheetAgenda=>({id:`new-${Date.now()}`,type:typeFor(time),title:"",startsAt:`${date}T${time==="全天"?"00:00":time==="住宿"?"09:00":time}`,timezone:"",place:"",version:0});
