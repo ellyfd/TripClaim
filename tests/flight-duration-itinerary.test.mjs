@@ -34,8 +34,8 @@ test("flight segments preserve exact departure and arrival cells across midnight
 });
 
 test("UI exposes one readable 24-hour calendar with a true all-day lane and unclipped flight logs",async()=>{
- const [sheet,itinerary,css,refinement,globals]=await Promise.all([
-  read("app/AgendaSheet.tsx"),read("app/ItineraryWizardLive.tsx"),read("app/styles/audit-fixes.css"),read("app/styles/calendar-refinement.css"),read("app/globals.css")
+ const [sheet,itinerary,css,globals]=await Promise.all([
+  read("app/AgendaSheet.tsx"),read("app/ItineraryWizardLive.tsx"),read("app/styles/audit-fixes.css"),read("app/globals.css")
  ]);
  assert.match(itinerary,/calendarDatesForAgenda\(x\.trip\.startsOn,x\.trip\.endsOn,agenda\)/);
  assert.match(sheet,/const showFullDay=true/);
@@ -59,12 +59,12 @@ test("UI exposes one readable 24-hour calendar with a true all-day lane and uncl
  assert.match(sheet,/if\(isSyncedFlight\(row\)\)continue/);
  assert.match(sheet,/buildFlightSegments\(visibleDates,rows\)/);
  assert.match(sheet,/flight-duration-segment/);
+ assert.match(globals,/@import "\.\/styles\/audit-fixes\.css";\s*$/);
  assert.match(css,/Synced flight projections are duration bands/);
  assert.match(css,/\.flight-duration-segment\{/);
- assert.ok(globals.indexOf("audit-fixes.css")<globals.indexOf("calendar-refinement.css"));
- assert.match(refinement,/\.agenda-sheet \.sheet-time,\.agenda-sheet \.sheet-cell\{min-height:56px\}/);
- assert.match(refinement,/\.agenda-sheet \.pinned-all-day\{top:42px;min-height:72px\}/);
- assert.match(refinement,/\.sheet-cell\.pinned-all-day \.sheet-event\{min-height:60px/);
- assert.match(refinement,/segment-flight-start,\n\.flight-duration-segment\.segment-flight-end\{z-index:6;overflow:visible\}/);
- assert.match(refinement,/flight-arrival-log\{position:absolute/);
+ assert.match(css,/\.agenda-sheet \.sheet-time,\.agenda-sheet \.sheet-cell\{min-height:56px\}/);
+ assert.match(css,/\.agenda-sheet \.pinned-all-day\{top:42px;min-height:72px\}/);
+ assert.match(css,/\.sheet-cell\.pinned-all-day \.sheet-event\{min-height:60px/);
+ assert.match(css,/segment-flight-start,\n\.flight-duration-segment\.segment-flight-end\{z-index:6;overflow:visible\}/);
+ assert.match(css,/flight-arrival-log\{position:absolute/);
 });
