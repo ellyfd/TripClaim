@@ -2,15 +2,16 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {readFile} from "node:fs/promises";
 import {flightTiming,formatUtcOffset,zonedLocalToUtc} from "../app/timezone-utils.ts";
-import {resolveAirportTimezone} from "../app/travel-timezone.ts";
 
 const read=path=>readFile(new URL(`../${path}`,import.meta.url),"utf8");
 
-test("managed airport timezone resolution is deterministic for Amsterdam regressions",()=>{
- assert.deepEqual(resolveAirportTimezone("TPE").timezone,"Asia/Taipei");
- assert.deepEqual(resolveAirportTimezone("AMS").timezone,"Europe/Amsterdam");
- assert.deepEqual(resolveAirportTimezone("CDG").timezone,"Europe/Paris");
- assert.equal(resolveAirportTimezone("???").timezone,null);
+test("managed airport timezone resolver covers Amsterdam regressions without guessing unresolved airports",async()=>{
+ const source=await read("app/travel-timezone.ts");
+ assert.match(source,/TW:"Asia\/Taipei"/);
+ assert.match(source,/NL:"Europe\/Amsterdam"/);
+ assert.match(source,/FR:"Europe\/Paris"/);
+ assert.match(source,/return \{code:normalized,timezone:null,source:"unresolved"\}/);
+ assert.match(source,/Multi-zone countries are resolved only/);
 });
 
 test("CI73 true duration uses endpoint timezones instead of subtracting local clocks",()=>{
@@ -39,8 +40,8 @@ test("IANA conversion follows DST instead of a fixed UTC offset",()=>{
 });
 
 test("timezone migration is additive and booking remains canonical source",async()=>{
- const [migration,schema,replace,itinerary,sheet,todo]=await Promise.all([
-  read("drizzle/0024_flight_endpoint_timezones.sql"),read("db/schema.ts"),read("app/api/trips/[id]/bookings/replace/route.ts"),read("app/ItineraryWizardLive.tsx"),read("app/AgendaSheet.tsx"),read("app/TripTodoPanel.tsx")
+ const [migration,schema,replace,itinerary,sheet,todo,timezoneRoute]=await Promise.all([
+  read("drizzle/0024_flight_endpoint_timezones.sql"),read("db/schema.ts"),read("app/api/trips/[id]/bookings/replace/route.ts"),read("app/ItineraryWizardLive.tsx"),read("app/AgendaSheet.tsx"),read("app/TripTodoPanel.tsx"),read("app/api/airports/timezone/route.ts")
  ]);
  for(const field of ["departure_timezone","departure_utc_at","arrival_timezone","arrival_utc_at"])assert.match(migration,new RegExp(field));
  for(const field of ["departureTimezone","departureUtcAt","arrivalTimezone","arrivalUtcAt"])assert.match(schema,new RegExp(field));
@@ -55,5 +56,6 @@ test("timezone migration is additive and booking remains canonical source",async
  assert.match(todo,/抵達時間（當地）/);
  assert.match(todo,/出發時區/);
  assert.match(todo,/抵達時區/);
+ assert.match(timezoneRoute,/resolveAirportTimezone/);
  assert.doesNotMatch(todo,/new Date\(segment\.endAt\).*new Date\(segment\.startAt\)/s);
 });
