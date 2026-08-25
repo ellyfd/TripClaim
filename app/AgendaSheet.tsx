@@ -3,8 +3,9 @@
 import {useMemo,useRef,useState} from "react";
 import {validateDestinationMaster} from "./master-data-validation";
 import {buildFlightSegments,isSyncedFlight} from "./agenda-flight-layout.js";
+import {flightTiming,formatDurationMinutes,formatTimezoneDifference,formatUtcOffset,utcOffsetMinutes} from "./timezone-utils";
 
-export type SheetAgenda={id:string;type:string;title:string;startsAt:string;endsAt?:string|null;timezone?:string|null;place?:string|null;address?:string|null;notes?:string|null;version:number};
+export type SheetAgenda={id:string;type:string;title:string;startsAt:string;endsAt?:string|null;timezone?:string|null;place?:string|null;address?:string|null;notes?:string|null;version:number;departureTimezone?:string|null;departureUtcAt?:string|null;arrivalTimezone?:string|null;arrivalUtcAt?:string|null;origin?:string|null;destination?:string|null};
 
 const topRows=["全天","住宿"];
 const hourRows=(start:number,end:number)=>Array.from({length:end-start+1},(_,index)=>`${String(start+index).padStart(2,"0")}:00`);
@@ -14,6 +15,11 @@ const typeFor=(time:string)=>time==="08:00"?"早餐":time==="12:00"||time==="13:
 const isSyncedTravel=(item:SheetAgenda)=>Boolean(item.notes?.startsWith("booking:"));
 const renderedDayLimit=7;
 const showFullDay=true;
+const flightMeta=(item:SheetAgenda)=>{
+ if(item.departureUtcAt&&item.arrivalUtcAt&&item.departureTimezone&&item.arrivalTimezone){const durationMinutes=Math.round((Date.parse(item.arrivalUtcAt)-Date.parse(item.departureUtcAt))/60000),departureOffset=utcOffsetMinutes(item.departureUtcAt,item.departureTimezone),arrivalOffset=utcOffsetMinutes(item.arrivalUtcAt,item.arrivalTimezone);if(durationMinutes>0&&departureOffset!==null&&arrivalOffset!==null)return {durationMinutes,departureOffset,arrivalOffset,difference:arrivalOffset-departureOffset}}
+ if(item.endsAt&&item.departureTimezone&&item.arrivalTimezone){const timing=flightTiming({departureLocalAt:item.startsAt,departureTimezone:item.departureTimezone,arrivalLocalAt:item.endsAt,arrivalTimezone:item.arrivalTimezone});if(timing)return {durationMinutes:timing.durationMinutes,departureOffset:timing.departureOffsetMinutes,arrivalOffset:timing.arrivalOffsetMinutes,difference:timing.timezoneDifferenceMinutes}}
+ return null;
+};
 
 export default function AgendaSheet({dates,rows,onAdd,onEdit,onDelete}:{dates:string[];rows:SheetAgenda[];onAdd:(date:string,time:string)=>void;onEdit:(row:SheetAgenda)=>void;onDelete:(row:SheetAgenda)=>void}){
  const [selectedDayIndex,setSelectedDayIndex]=useState<number|null>(null),[importMessage,setImportMessage]=useState(""),[density,setDensity]=useState<"overview"|"edit">("overview"),[scrolledX,setScrolledX]=useState(false);const fileRef=useRef<HTMLInputElement>(null),imageRef=useRef<HTMLInputElement>(null);
@@ -43,9 +49,9 @@ export default function AgendaSheet({dates,rows,onAdd,onEdit,onDelete}:{dates:st
     {hours.map(time=><div className="sheet-row" key={time}>
      <div className={`sheet-time ${time==="全天"?"pinned-all-day":time==="住宿"?"pinned-stay":""}`}>{time}</div>
      {renderDates.map((date,i)=>{const originalIndex=windowStart+i,items=byCell.get(`${date}|${time}`)??[],flightSegments=time==="全天"||time==="住宿"?[]:(flightSegmentsByCell.get(`${date}|${time}`)??[]),occupied=Boolean(items.length||flightSegments.length);return <div className={`sheet-cell ${originalIndex===dayIndex?"mobile-active":""} ${time==="全天"?"pinned-all-day":time==="住宿"?"pinned-stay":""} ${flightSegments.length?"has-flight-duration":""}`} key={`${date}-${time}`} onClick={()=>!occupied&&onAdd(date,time)}>
-      {flightSegments.map((segment:any,index:number)=>{const item=segment.item as SheetAgenda,laneOffset=Math.min(index,3)*5,oppositeOffset=Math.max(0,flightSegments.length-index-1)*5,top=segment.dayFirst?`${Math.max(0,segment.topPercent)}%`:"-1px",bottom=segment.dayLast?`${Math.max(0,segment.bottomPercent)}%`:"-1px",sameCell=segment.first&&segment.last;return <article className={`flight-duration-segment ${segment.dayFirst?"segment-day-start":""} ${segment.dayLast?"segment-day-end":""} ${segment.first?"segment-flight-start":""} ${segment.last?"segment-flight-end":""}`} key={`${item.id}-${date}-${time}`} style={{top,bottom,left:`${4+laneOffset}px`,right:`${4+oppositeOffset}px`}} title={`${item.startsAt.replace("T"," ")} → ${(item.endsAt??"").replace("T"," ")} ${item.title}`} onClick={e=>e.stopPropagation()}>
-       {segment.first?<><b>✈ {item.title}</b><span>{item.startsAt.slice(11,16)} 出發・{item.place||"航班"}</span></>:segment.dayFirst?<><b>↳ {item.title}</b><span>跨日續飛</span></>:null}
-       {segment.last&&<span className="flight-arrival">{sameCell?`${item.startsAt.slice(11,16)} 出發 → `:""}{item.endsAt?.slice(11,16)} 抵達</span>}
+      {flightSegments.map((segment:any,index:number)=>{const item=segment.item as SheetAgenda,meta=flightMeta(item),laneOffset=Math.min(index,3)*5,oppositeOffset=Math.max(0,flightSegments.length-index-1)*5,top=segment.dayFirst?`${Math.max(0,segment.topPercent)}%`:"-1px",bottom=segment.dayLast?`${Math.max(0,segment.bottomPercent)}%`:"-1px",sameCell=segment.first&&segment.last;return <article className={`flight-duration-segment ${segment.dayFirst?"segment-day-start":""} ${segment.dayLast?"segment-day-end":""} ${segment.first?"segment-flight-start":""} ${segment.last?"segment-flight-end":""}`} key={`${item.id}-${date}-${time}`} style={{top,bottom,left:`${4+laneOffset}px`,right:`${4+oppositeOffset}px`}} title={`${item.startsAt.replace("T"," ")} ${item.departureTimezone||""} → ${(item.endsAt??"").replace("T"," ")} ${item.arrivalTimezone||""} ${item.title}`} onClick={e=>e.stopPropagation()}>
+       {segment.first?<><b>✈ {item.title}</b><span>{item.startsAt.slice(11,16)} 出發・{item.origin||item.place||"航班"}{meta?` (${formatUtcOffset(meta.departureOffset)})`:item.departureTimezone?` (${item.departureTimezone})`:""}</span>{meta&&<small className="flight-timezone-meta">實際飛行 {formatDurationMinutes(meta.durationMinutes)}・{formatTimezoneDifference(meta.difference)}</small>}</>:segment.dayFirst?<><b>↳ {item.title}</b><span>跨日續飛</span></>:null}
+       {segment.last&&<span className="flight-arrival">{sameCell?`${item.startsAt.slice(11,16)} 出發 → `:""}{item.endsAt?.slice(11,16)} 抵達・{item.destination||"目的地"}{meta?` (${formatUtcOffset(meta.arrivalOffset)})`:item.arrivalTimezone?` (${item.arrivalTimezone})`:""}</span>}
        {segment.first&&<button aria-label="永久刪除整張訂單" title="永久刪除整張訂單" onClick={e=>{e.stopPropagation();onDelete(item)}}>×</button>}
       </article>})}
       {items.length?items.map(item=>{const synced=isSyncedTravel(item);return <article className={`sheet-event type-${item.type.replaceAll("/","-")} ${synced?"synced-travel":""}`} key={item.id} onClick={e=>{e.stopPropagation();if(!synced)onEdit(item)}}><b>{item.type==="全天"||item.type==="住宿"?item.title:`${item.startsAt.slice(11,16)} ${item.title}`}</b><span>{synced?`${item.place||item.address||item.type}・訂單同步`:item.place||item.address||item.type}</span><button aria-label={synced?"永久刪除整張訂單":"刪除"} title={synced?"永久刪除整張訂單":"刪除"} onClick={e=>{e.stopPropagation();onDelete(item)}}>×</button></article>}):!flightSegments.length?<button className="sheet-add" aria-label={`${date} ${time} 新增`}>＋</button>:null}</div>})}
@@ -53,7 +59,7 @@ export default function AgendaSheet({dates,rows,onAdd,onEdit,onDelete}:{dates:st
    </div>
   </div>
   </div>
-  <p className="agenda-sheet-tip"><span className="desktop-agenda-title">Calendar 固定 24 小時；桌機一次只掛載最多 7 天，長行程用前／後 7 天切換。</span><span className="mobile-agenda-title">左右切換所有日期；全天與住宿固定顯示在最上方。</span> 航班以真正的出發 → 抵達 travel band 顯示；跨日抵達會延伸到下一天。</p>
+  <p className="agenda-sheet-tip"><span className="desktop-agenda-title">Calendar 固定 24 小時；桌機一次只掛載最多 7 天，長行程用前／後 7 天切換。</span><span className="mobile-agenda-title">左右切換所有日期；全天與住宿固定顯示在最上方。</span> 航班依兩端當地時間定位；UTC 只用來計算真實飛行時間與時差，因此 travel band 高度不等於實際飛行時數。</p>
  </section>;
 }
 
