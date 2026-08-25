@@ -43,7 +43,10 @@ test("shared itinerary no longer embeds personal preparation tools or engineerin
  assert.match(preparation,/TripTodoPanel/);
  assert.match(preparation,/CompLeavePanel/);
  assert.match(preparation,/<h1>行前準備<\/h1>/);
- assert.match(preparation,/只屬於我/);
+ assert.match(preparation,/自己的機票、住宿、待辦與補休在這裡完成/);
+ assert.match(preparation,/查看同行者是否已準備好/);
+ assert.match(preparation,/看不到他們的原始文件或個人報支/);
+ assert.match(preparation,/同行者只看到完成狀態與需要共用的行程資訊/);
  assert.doesNotMatch(preparation,/Personal workspace|資料邊界/);
 });
 
@@ -73,6 +76,14 @@ test("trip list has one primary entry and always opens overview",async()=>{
  assert.match(source,/建立並開啟出差/);
  assert.match(page,/<CreateTripForm onCreate=\{trip=>openTrip\(trip,"overview"\)\}\/?>/);
  assert.doesNotMatch(page,/onExpense=/);
+});
+
+test("secondary booking disclosure and mobile trip actions keep the IA hierarchy",async()=>{
+ const [styles,globals]=await Promise.all([read("app/styles/ia-hierarchy.css"),read("app/globals.css")]);
+ assert.match(styles,/\.shared-booking-details>summary\{/);
+ assert.match(styles,/\.shared-booking-details\[open\]>summary i/);
+ assert.match(styles,/@media\(max-width:800px\)[\s\S]*\.trip-row-actions\{grid-template-columns:minmax\(0,1fr\) auto!important\}/);
+ assert.match(globals,/@import "\.\/styles\/ia-hierarchy\.css";\n@import "\.\/styles\/audit-fixes\.css";\s*$/);
 });
 
 test("flight and stay booking guidance are domain-specific",async()=>{
