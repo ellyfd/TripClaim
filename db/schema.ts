@@ -48,6 +48,14 @@ export const tripMemberTodos = sqliteTable("trip_member_todos", {
   updatedAt: text("updated_at").notNull(),
 });
 
+export const tripCompLeaveOverrides = sqliteTable("trip_comp_leave_overrides", {
+  id: text("id").primaryKey(),
+  tripId: text("trip_id").notNull(),
+  userEmail: text("user_email").notNull(),
+  halfUnits: integer("half_units").notNull(),
+  updatedAt: text("updated_at").notNull(),
+});
+
 export const tripDestinations = sqliteTable("trip_destinations", {
   id: text("id").primaryKey(),
   tripId: text("trip_id").notNull(),
