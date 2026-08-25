@@ -1,0 +1,19 @@
+/* IA hierarchy refinements: keep calendar primary, booking details secondary, and trip-list actions aligned. */
+.shared-booking-details{display:block;margin-top:16px;border:1px solid var(--line);border-radius:10px;background:#fff;overflow:hidden}
+.shared-booking-details>summary{min-height:56px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px;list-style:none;cursor:pointer}
+.shared-booking-details>summary::-webkit-details-marker{display:none}
+.shared-booking-details>summary>span{display:flex;min-width:0;flex-direction:column;gap:2px}
+.shared-booking-details>summary b{font-size:15px;color:var(--ink)}
+.shared-booking-details>summary small{font-size:12px;color:var(--muted)}
+.shared-booking-details>summary i{font-style:normal;color:var(--green);transition:transform .18s ease}
+.shared-booking-details[open]>summary i{transform:rotate(180deg)}
+.shared-booking-details>.booking-list{padding:0 14px 14px;border-top:1px solid var(--line)}
+.shared-booking-details .booking-list-head{padding-top:12px!important;border-top:0!important}
+@media(max-width:800px){
+ .trip-row-actions{grid-template-columns:minmax(0,1fr) auto!important}
+ .shared-booking-details{margin-top:10px}
+ .shared-booking-details>summary{min-height:60px;padding:11px 12px}
+ .shared-booking-details>summary b{font-size:15px}
+ .shared-booking-details>summary small{font-size:13px;line-height:1.35}
+ .shared-booking-details>.booking-list{padding:0 10px 10px}
+}
