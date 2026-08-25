@@ -9,6 +9,12 @@
 .shared-booking-details[open]>summary i{transform:rotate(180deg)}
 .shared-booking-details>.booking-list{padding:0 14px 14px;border-top:1px solid var(--line)}
 .shared-booking-details .booking-list-head{padding-top:12px!important;border-top:0!important}
+.agenda-view-status{min-height:36px;padding:0 11px;display:inline-flex;align-items:center;border:1px solid #b8c9c1;border-radius:8px;background:#edf5f1;color:var(--green);font-size:12px;font-weight:800;white-space:nowrap}
+@media(min-width:801px){
+ .trip-context-nav{grid-template-columns:1fr}
+ .trip-context-nav .back{display:none}
+ .trip-context-nav>div{grid-column:1;justify-self:center}
+}
 @media(max-width:800px){
  .trip-row-actions{grid-template-columns:minmax(0,1fr) auto!important}
  .shared-booking-details{margin-top:10px}
@@ -16,4 +22,5 @@
  .shared-booking-details>summary b{font-size:15px}
  .shared-booking-details>summary small{font-size:13px;line-height:1.35}
  .shared-booking-details>.booking-list{padding:0 10px 10px}
+ .agenda-view-status{min-height:44px;padding:0 10px;font-size:13px}
 }

@@ -42,7 +42,8 @@ test("UI exposes one readable 24-hour calendar with a true all-day lane and uncl
  assert.match(sheet,/hourRows\(showFullDay\?0:8,showFullDay\?23:22\)/);
  assert.doesNotMatch(sheet,/setShowFullDay|setDensity/);
  assert.doesNotMatch(sheet,/全天總覽|舒適編輯|只看 08–22|完整 24 小時\$\{|跨夜航班・完整 24 小時/);
- assert.match(sheet,/>完整 24 小時<\/button>/);
+ assert.match(sheet,/className="agenda-view-status" role="status" aria-label="顯示範圍">完整 24 小時<\/span>/);
+ assert.doesNotMatch(sheet,/agenda-view-status[^>]*>\s*<button/);
  assert.match(sheet,/固定顯示 00:00–23:00/);
  assert.match(sheet,/className="agenda-sheet"/);
  assert.doesNotMatch(sheet,/className="agenda-sheet density-/);
