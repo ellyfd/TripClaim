@@ -123,6 +123,8 @@ export const travelBookings = sqliteTable("travel_bookings", {
   id: text("id").primaryKey(), tripId: text("trip_id").notNull(), ownerEmail: text("owner_email").notNull(),
   kind: text("kind", { enum: ["flight", "stay"] }).notNull(), title: text("title").notNull(),
   startAt: text("start_at").notNull(), endAt: text("end_at").notNull(), timezone: text("timezone"),
+  departureTimezone: text("departure_timezone"), departureUtcAt: text("departure_utc_at"),
+  arrivalTimezone: text("arrival_timezone"), arrivalUtcAt: text("arrival_utc_at"),
   origin: text("origin"), destination: text("destination"), amountMinor: integer("amount_minor").notNull(),
   currency: text("currency").notNull(), bookedAt: text("booked_at").notNull(), documentId: text("document_id"),
   version: integer("version").notNull().default(1), deletedAt: text("deleted_at"), createdAt: text("created_at").notNull(), updatedAt: text("updated_at").notNull(),
