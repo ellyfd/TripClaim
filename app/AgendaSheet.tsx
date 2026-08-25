@@ -2,7 +2,7 @@
 
 import {useMemo,useRef,useState} from "react";
 import {validateDestinationMaster} from "./master-data-validation";
-import {buildFlightSegments,flightRequiresFullDay,isSyncedFlight} from "./agenda-flight-layout.js";
+import {buildFlightSegments,isSyncedFlight} from "./agenda-flight-layout.js";
 
 export type SheetAgenda={id:string;type:string;title:string;startsAt:string;endsAt?:string|null;timezone?:string|null;place?:string|null;address?:string|null;notes?:string|null;version:number};
 
@@ -13,15 +13,14 @@ const cellKey=(item:SheetAgenda)=>{if(item.type==="住宿")return "住宿";if(it
 const typeFor=(time:string)=>time==="08:00"?"早餐":time==="12:00"||time==="13:00"?"午餐":time==="19:00"||time==="20:00"?"晚餐":time==="住宿"?"住宿":"會議";
 const isSyncedTravel=(item:SheetAgenda)=>Boolean(item.notes?.startsWith("booking:"));
 const renderedDayLimit=7;
+const showFullDay=true;
 
 export default function AgendaSheet({dates,rows,onAdd,onEdit,onDelete}:{dates:string[];rows:SheetAgenda[];onAdd:(date:string,time:string)=>void;onEdit:(row:SheetAgenda)=>void;onDelete:(row:SheetAgenda)=>void}){
- const [selectedDayIndex,setSelectedDayIndex]=useState<number|null>(null),[importMessage,setImportMessage]=useState(""),[density,setDensity]=useState<"overview"|"edit">("overview"),[showFullDay,setShowFullDay]=useState(false),[scrolledX,setScrolledX]=useState(false);const fileRef=useRef<HTMLInputElement>(null),imageRef=useRef<HTMLInputElement>(null);
+ const [selectedDayIndex,setSelectedDayIndex]=useState<number|null>(null),[importMessage,setImportMessage]=useState(""),[density,setDensity]=useState<"overview"|"edit">("overview"),[scrolledX,setScrolledX]=useState(false);const fileRef=useRef<HTMLInputElement>(null),imageRef=useRef<HTMLInputElement>(null);
  const visibleDates=dates;
  const todayIndex=visibleDates.indexOf(new Date().toISOString().slice(0,10)),dayIndex=visibleDates.length?Math.min(selectedDayIndex??(todayIndex>=0?todayIndex:0),visibleDates.length-1):0;
  const windowStart=Math.floor(dayIndex/renderedDayLimit)*renderedDayLimit,renderDates=visibleDates.slice(windowStart,windowStart+renderedDayLimit),hasPreviousWindow=windowStart>0,hasNextWindow=windowStart+renderedDayLimit<visibleDates.length;
- const syncedFlights=useMemo(()=>rows.filter(row=>isSyncedFlight(row)),[rows]),requiresFullDay=useMemo(()=>syncedFlights.some(row=>flightRequiresFullDay(row)),[syncedFlights]),effectiveFullDay=requiresFullDay||showFullDay;
- const manualStartHour=showFullDay?0:8,manualEndHour=showFullDay?23:22,startHour=requiresFullDay?0:manualStartHour,endHour=requiresFullDay?23:manualEndHour;
- const hours=[...topRows,...hourRows(startHour,endHour)],hiddenTimeCount=rows.filter(row=>row.type!=="全天"&&row.type!=="住宿"&&(Number(row.startsAt.slice(11,13))<8||Number(row.startsAt.slice(11,13))>22)).length;
+ const hours=[...topRows,...hourRows(showFullDay?0:8,showFullDay?23:22)];
  const flightSegmentsByCell=useMemo(()=>buildFlightSegments(visibleDates,rows),[visibleDates,rows]);
  const byCell=useMemo(()=>{const map=new Map<string,SheetAgenda[]>();for(const row of rows){if(isSyncedFlight(row))continue;const key=`${row.startsAt.slice(0,10)}|${cellKey(row)}`,list=map.get(key)??[];list.push(row);map.set(key,list)}return map},[rows]);
  const jumpWindow=(direction:-1|1)=>{const target=Math.max(0,Math.min(visibleDates.length-1,windowStart+direction*renderedDayLimit));setSelectedDayIndex(target);setScrolledX(false)};
@@ -30,10 +29,9 @@ export default function AgendaSheet({dates,rows,onAdd,onEdit,onDelete}:{dates:st
  if(!visibleDates.length)return <section className="agenda-sheet-wrap"><div className="panel" role="status" aria-live="polite"><b>正在載入這趟出差的行程</b><p>取得正確的出差日期前，不顯示其他旅程或預設日期。</p></div></section>;
  return <section className="agenda-sheet-wrap">
   <div className="agenda-sheet-toolbar">
-   <div><b><span className="desktop-agenda-title">共同行程表</span><span className="mobile-agenda-title">今日行程</span></b><span>點空白格新增；一般活動可直接編輯，機票／住宿由原始訂單同步</span></div>
-   <div className="agenda-toolbar-actions"><div className="agenda-view-toggle"><button className={density==="overview"?"on":""} onClick={()=>setDensity("overview")}>全天總覽</button><button className={density==="edit"?"on":""} onClick={()=>setDensity("edit")}>舒適編輯</button></div><button className={effectiveFullDay?"active-time-range":""} disabled={requiresFullDay} onClick={()=>setShowFullDay(value=>!value)}>{requiresFullDay?"跨夜航班・完整 24 小時":showFullDay?"只看 08–22":`完整 24 小時${hiddenTimeCount?`（${hiddenTimeCount}）`:""}`}</button><button onClick={()=>fileRef.current?.click()}>↑ 匯入 Excel／CSV</button><button onClick={()=>imageRef.current?.click()}>▧ 讀取截圖／PDF</button><input ref={fileRef} hidden type="file" accept=".xlsx,.xls,.csv" onChange={e=>importFile(e.target.files?.[0])}/><input ref={imageRef} hidden type="file" accept="image/*,.pdf" onChange={e=>imageFile(e.target.files?.[0])}/></div>
+   <div><b><span className="desktop-agenda-title">共同行程表</span><span className="mobile-agenda-title">今日行程</span></b><span>固定顯示 00:00–23:00；一般活動可直接編輯，機票／住宿由原始訂單同步</span></div>
+   <div className="agenda-toolbar-actions"><div className="agenda-view-toggle"><button className={density==="overview"?"on":""} onClick={()=>setDensity("overview")}>全天總覽</button><button className={density==="edit"?"on":""} onClick={()=>setDensity("edit")}>舒適編輯</button></div><button onClick={()=>fileRef.current?.click()}>↑ 匯入 Excel／CSV</button><button onClick={()=>imageRef.current?.click()}>▧ 讀取截圖／PDF</button><input ref={fileRef} hidden type="file" accept=".xlsx,.xls,.csv" onChange={e=>importFile(e.target.files?.[0])}/><input ref={imageRef} hidden type="file" accept="image/*,.pdf" onChange={e=>imageFile(e.target.files?.[0])}/></div>
   </div>
-  {requiresFullDay&&<div className="flight-range-notice" role="status">偵測到跨夜航班，行程表已自動顯示 00:00–23:00，避免起飛或抵達時段被隱藏。</div>}
   {visibleDates.length>renderedDayLimit&&<div className="agenda-window-nav" aria-label="長行程日期區段"><button disabled={!hasPreviousWindow} onClick={()=>jumpWindow(-1)}>← 前 7 天</button><span>顯示第 {windowStart+1}–{windowStart+renderDates.length} 天，共 {visibleDates.length} 天</span><button disabled={!hasNextWindow} onClick={()=>jumpWindow(1)}>後 7 天 →</button></div>}
   {importMessage&&<div className="agenda-import-message"><span>{importMessage}</span><button onClick={()=>setImportMessage("")}>關閉</button></div>}
   <div className="agenda-mobile-days">{visibleDates.map((d,i)=><button className={i===dayIndex?"on":""} key={d} onClick={()=>{setSelectedDayIndex(i);setScrolledX(false)}}>{dayLabel(d)}</button>)}</div>
@@ -55,7 +53,7 @@ export default function AgendaSheet({dates,rows,onAdd,onEdit,onDelete}:{dates:st
    </div>
   </div>
   </div>
-  <p className="agenda-sheet-tip"><span className="desktop-agenda-title">桌機一次只掛載最多 7 天；長行程用前／後 7 天切換。「全天總覽」看全貌、「舒適編輯」放大操作。</span><span className="mobile-agenda-title">左右切換所有日期；全天與住宿固定顯示在最上方。</span> 航班以真正的出發 → 抵達 duration band 顯示；跨日抵達會延伸到下一天，不再只佔起飛那一小格。</p>
+  <p className="agenda-sheet-tip"><span className="desktop-agenda-title">Calendar 固定 24 小時；桌機一次只掛載最多 7 天，長行程用前／後 7 天切換。</span><span className="mobile-agenda-title">左右切換所有日期；全天與住宿固定顯示在最上方。</span> 航班以真正的出發 → 抵達 travel band 顯示；跨日抵達會延伸到下一天。</p>
  </section>;
 }
 
