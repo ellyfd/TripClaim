@@ -12,7 +12,8 @@ export async function GET(_:NextRequest,{params}:{params:Promise<{id:string;book
  const db=await getDb();
  const [booking]=await db.select().from(travelBookings).where(and(eq(travelBookings.id,bookingId),eq(travelBookings.tripId,id),isNull(travelBookings.deletedAt))).limit(1);
  if(!booking?.documentId)return NextResponse.json({error:"not_found"},{status:404});
- const [doc]=await db.select().from(uploadedDocuments).where(and(eq(uploadedDocuments.id,booking.documentId),eq(uploadedDocuments.tripId,id),eq(uploadedDocuments.ownerEmail,booking.ownerEmail),isNull(uploadedDocuments.deletedAt))).limit(1);
+ if(booking.ownerEmail!==user.email)return NextResponse.json({error:"attachment_owner_only"},{status:403});
+ const [doc]=await db.select().from(uploadedDocuments).where(and(eq(uploadedDocuments.id,booking.documentId),eq(uploadedDocuments.tripId,id),eq(uploadedDocuments.ownerEmail,user.email),isNull(uploadedDocuments.deletedAt))).limit(1);
  if(!doc)return NextResponse.json({error:"not_found"},{status:404});
  const {env}=await import("cloudflare:workers");const object=await env.BUCKET.get(doc.objectKey);
  if(!object)return NextResponse.json({error:"content_missing"},{status:404});
