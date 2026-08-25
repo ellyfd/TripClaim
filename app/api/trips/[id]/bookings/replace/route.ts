@@ -7,8 +7,10 @@ import {queueObjectDeletionWrite,reconcileQueuedObjectDeletionResult,retryPendin
 import {deleteObjectKeysWithRetry} from "../../../../../../db/object-storage";
 import {agendaItems,masterDataExceptions,personalExpenses,travelBookings,uploadedDocuments} from "../../../../../../db/schema";
 import {decideReportingCurrency,managedClaimTypeCode,MASTER_DATA_VERSION} from "../../../../../managed-config";
+import {resolveAirportTimezone} from "../../../../../travel-timezone";
+import {flightTiming,isValidIanaTimezone} from "../../../../../timezone-utils";
 
-type Leg={title?:string;startAt?:string;endAt?:string;timezone?:string;origin?:string;destination?:string};
+type Leg={title?:string;startAt?:string;endAt?:string;timezone?:string;departureTimezone?:string;arrivalTimezone?:string;origin?:string;destination?:string};
 type Input={kind?:"flight"|"stay";legs?:Leg[];amountMinor?:number;currency?:string;documentId?:string;bookedAt?:string};
 const isTravelDocument=(documentType:string,kind:"flight"|"stay")=>kind==="flight"?(documentType==="flight"||documentType.includes("機票")):(documentType==="stay"||documentType.includes("住宿"));
 
@@ -20,6 +22,18 @@ export async function POST(request:NextRequest,{params}:{params:Promise<{id:stri
  if(!input.kind||!legs.length||!Number.isInteger(input.amountMinor)||input.amountMinor!<0||!input.currency?.trim()||!/^[A-Za-z]{3}$/.test(input.currency.trim()))return NextResponse.json({error:"invalid_input"},{status:400});
  const invalidLeg=input.kind==="flight"?legs.some(leg=>!leg.title?.trim()||!leg.startAt||!leg.endAt||!leg.origin?.trim()||!leg.destination?.trim()):legs.some(leg=>!leg.title?.trim()||!leg.startAt||!leg.endAt);
  if(invalidLeg)return NextResponse.json({error:"invalid_leg"},{status:400});
+ const normalizedLegs=legs.map((leg,index)=>{
+  const origin=leg.origin?.trim().toUpperCase()||null,destination=leg.destination?.trim().toUpperCase()||null;
+  if(input.kind!=="flight")return {...leg,origin,destination,departureTimezone:null,arrivalTimezone:null,departureUtcAt:null,arrivalUtcAt:null};
+  const departureTimezone=leg.departureTimezone?.trim()||resolveAirportTimezone(origin).timezone,arrivalTimezone=leg.arrivalTimezone?.trim()||resolveAirportTimezone(destination).timezone;
+  if(!departureTimezone||!arrivalTimezone)return {error:"timezone_required",index,origin,destination,departureTimezone,arrivalTimezone};
+  if(!isValidIanaTimezone(departureTimezone)||!isValidIanaTimezone(arrivalTimezone))return {error:"invalid_timezone",index,origin,destination,departureTimezone,arrivalTimezone};
+  const timing=flightTiming({departureLocalAt:leg.startAt!,departureTimezone,arrivalLocalAt:leg.endAt!,arrivalTimezone});
+  if(!timing)return {error:"invalid_zoned_time",index,origin,destination,departureTimezone,arrivalTimezone};
+  return {...leg,origin,destination,departureTimezone,arrivalTimezone,departureUtcAt:timing.departureUtcAt,arrivalUtcAt:timing.arrivalUtcAt,durationMinutes:timing.durationMinutes,timezoneDifferenceMinutes:timing.timezoneDifferenceMinutes};
+ });
+ const timezoneError=normalizedLegs.find((leg:any)=>leg.error) as any;
+ if(timezoneError)return NextResponse.json({error:timezoneError.error,legIndex:timezoneError.index,origin:timezoneError.origin,destination:timezoneError.destination,message:timezoneError.error==="timezone_required"?"無法從機場主檔確定出發／抵達時區，請確認兩端 IANA 時區後再同步":timezoneError.error==="invalid_timezone"?"時區格式無效，請使用例如 Asia/Taipei、Europe/Amsterdam 的 IANA 時區":"當地時間與時區無法轉成有效的絕對時間，請確認日期、時間與夏令時間"},{status:400});
  const db=await getDb();
  const priorCleanup=await retryPendingObjectDeletions({ownerEmail:user.email,tripId:id}).catch(()=>({attempted:0,deleted:0,remaining:0}));
 
@@ -63,15 +77,16 @@ export async function POST(request:NextRequest,{params}:{params:Promise<{id:stri
   writes.push(db.delete(masterDataExceptions).where(and(eq(masterDataExceptions.ownerEmail,user.email),eq(masterDataExceptions.sourceType,"uploaded_document"),inArray(masterDataExceptions.sourceId,oldDocumentIds))));
   writes.push(db.delete(uploadedDocuments).where(and(eq(uploadedDocuments.tripId,id),eq(uploadedDocuments.ownerEmail,user.email),inArray(uploadedDocuments.id,oldDocumentIds))));
  }
- for(let index=0;index<legs.length;index++){
-  const leg=legs[index],bookingId=crypto.randomUUID(),agendaId=crypto.randomUUID(),origin=leg.origin?.trim()||null,destination=leg.destination?.trim()||null,place=input.kind==="stay"?(destination||origin||leg.title!.trim()):[origin,destination].filter(Boolean).join(" → ");bookingIds.push(bookingId);agendaIds.push(agendaId);
-  writes.push(db.insert(travelBookings).values({id:bookingId,tripId:id,ownerEmail:user.email,kind:input.kind,title:leg.title!.trim(),startAt:leg.startAt!,endAt:leg.endAt!,timezone:leg.timezone,origin,destination,amountMinor:index===0?input.amountMinor!:0,currency:originalCurrency,bookedAt,documentId:validatedDocument?.id,version:1,createdAt:now,updatedAt:now}));
-  writes.push(db.insert(agendaItems).values({id:agendaId,tripId:id,type:input.kind==="flight"?"交通/車程":"住宿",title:leg.title!.trim(),startsAt:leg.startAt!,endsAt:leg.endAt!,timezone:leg.timezone,place,notes:`booking:${bookingId}`,createdByEmail:user.email,updatedByEmail:user.email,version:1,createdAt:now,updatedAt:now}));
+ for(let index=0;index<normalizedLegs.length;index++){
+  const leg=normalizedLegs[index] as any,bookingId=crypto.randomUUID(),agendaId=crypto.randomUUID(),origin=leg.origin||null,destination=leg.destination||null,place=input.kind==="stay"?(destination||origin||leg.title!.trim()):[origin,destination].filter(Boolean).join(" → ");bookingIds.push(bookingId);agendaIds.push(agendaId);
+  writes.push(db.insert(travelBookings).values({id:bookingId,tripId:id,ownerEmail:user.email,kind:input.kind,title:leg.title!.trim(),startAt:leg.startAt!,endAt:leg.endAt!,timezone:input.kind==="flight"?leg.departureTimezone:leg.timezone,departureTimezone:input.kind==="flight"?leg.departureTimezone:null,departureUtcAt:input.kind==="flight"?leg.departureUtcAt:null,arrivalTimezone:input.kind==="flight"?leg.arrivalTimezone:null,arrivalUtcAt:input.kind==="flight"?leg.arrivalUtcAt:null,origin,destination,amountMinor:index===0?input.amountMinor!:0,currency:originalCurrency,bookedAt,documentId:validatedDocument?.id,version:1,createdAt:now,updatedAt:now}));
+  writes.push(db.insert(agendaItems).values({id:agendaId,tripId:id,type:input.kind==="flight"?"交通/車程":"住宿",title:leg.title!.trim(),startsAt:leg.startAt!,endsAt:leg.endAt!,timezone:input.kind==="flight"?leg.departureTimezone:leg.timezone,place,notes:`booking:${bookingId}`,createdByEmail:user.email,updatedByEmail:user.email,version:1,createdAt:now,updatedAt:now}));
  }
- const expenseId=crypto.randomUUID(),first=legs[0];
+ const expenseId=crypto.randomUUID(),first=normalizedLegs[0] as any;
  writes.push(db.insert(personalExpenses).values({id:expenseId,ownerEmail:user.email,tripId:id,sourceDocumentId:validatedDocument?.id,sourceBookingId:bookingIds[0],category,categoryCode:managedClaimTypeCode(category),merchant:first.title!.trim(),expenseDate:first.startAt!.slice(0,10),originalAmountMinor:input.amountMinor!,originalCurrency,reportingAmountMinor:decision.requiresTwd?null:input.amountMinor!,reportingCurrency:decision.reportingCurrency,currencyDecisionReason:decision.reason,amountMinor:decision.requiresTwd?0:input.amountMinor!,currency:decision.reportingCurrency,status:"review",masterDataVersion:MASTER_DATA_VERSION,createdAt:now,updatedAt:now}));
  await db.batch(writes);
  const oldObjectKeys=oldDocuments.map(doc=>doc.objectKey),objectCleanup=await deleteObjectKeysWithRetry(oldObjectKeys),queueState=await reconcileQueuedObjectDeletionResult(oldObjectKeys,objectCleanup);
- await recordAudit({tripId:id,actorEmail:user.email,entityType:"travel_order",entityId:validatedDocument?.id??bookingIds[0],action:"replace_order_graph",before:{replacedGroups:[...replacedGroups],oldBookingIds,oldDocumentIds,oldExpenseIds},after:{kind:input.kind,bookingIds,agendaIds,expenseId,documentId:validatedDocument?.id,bookedAt,objectDeleteFailures:objectCleanup.objectDeleteFailures,objectDeleteAttempts:objectCleanup.attemptsUsed,failedObjectKeys:objectCleanup.failedObjectKeys,objectDeleteQueued:queueState.queued,priorCleanupRemaining:priorCleanup.remaining}});
- return NextResponse.json({saved:true,replacedOrders:replacedGroups.size,bookingsCreated:bookingIds.length,bookingIds,agendaIds,expenseId,documentId:validatedDocument?.id,objectDeleteFailures:objectCleanup.objectDeleteFailures,objectDeleteAttempts:objectCleanup.attemptsUsed,cleanupPending:queueState.queued>0,cleanupQueued:queueState.queued,priorCleanupRemaining:priorCleanup.remaining},{status:201});
+ const timezoneAudit=input.kind==="flight"?normalizedLegs.map((leg:any)=>({origin:leg.origin,destination:leg.destination,departureTimezone:leg.departureTimezone,departureUtcAt:leg.departureUtcAt,arrivalTimezone:leg.arrivalTimezone,arrivalUtcAt:leg.arrivalUtcAt,durationMinutes:leg.durationMinutes})):undefined;
+ await recordAudit({tripId:id,actorEmail:user.email,entityType:"travel_order",entityId:validatedDocument?.id??bookingIds[0],action:"replace_order_graph",before:{replacedGroups:[...replacedGroups],oldBookingIds,oldDocumentIds,oldExpenseIds},after:{kind:input.kind,bookingIds,agendaIds,expenseId,documentId:validatedDocument?.id,bookedAt,timezoneAudit,objectDeleteFailures:objectCleanup.objectDeleteFailures,objectDeleteAttempts:objectCleanup.attemptsUsed,failedObjectKeys:objectCleanup.failedObjectKeys,objectDeleteQueued:queueState.queued,priorCleanupRemaining:priorCleanup.remaining}});
+ return NextResponse.json({saved:true,replacedOrders:replacedGroups.size,bookingsCreated:bookingIds.length,bookingIds,agendaIds,expenseId,documentId:validatedDocument?.id,timezoneAudit,objectDeleteFailures:objectCleanup.objectDeleteFailures,objectDeleteAttempts:objectCleanup.attemptsUsed,cleanupPending:queueState.queued>0,cleanupQueued:queueState.queued,priorCleanupRemaining:priorCleanup.remaining},{status:201});
 }
