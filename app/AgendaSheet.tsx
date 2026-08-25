@@ -13,13 +13,14 @@ const cellKey=(item:SheetAgenda)=>{if(item.type==="住宿")return "住宿";if(it
 const typeFor=(time:string)=>time==="08:00"?"早餐":time==="12:00"||time==="13:00"?"午餐":time==="19:00"||time==="20:00"?"晚餐":time==="住宿"?"住宿":"會議";
 const isSyncedTravel=(item:SheetAgenda)=>Boolean(item.notes?.startsWith("booking:"));
 const renderedDayLimit=7;
+const showFullDay=true;
 
 export default function AgendaSheet({dates,rows,onAdd,onEdit,onDelete}:{dates:string[];rows:SheetAgenda[];onAdd:(date:string,time:string)=>void;onEdit:(row:SheetAgenda)=>void;onDelete:(row:SheetAgenda)=>void}){
  const [selectedDayIndex,setSelectedDayIndex]=useState<number|null>(null),[importMessage,setImportMessage]=useState(""),[density,setDensity]=useState<"overview"|"edit">("overview"),[scrolledX,setScrolledX]=useState(false);const fileRef=useRef<HTMLInputElement>(null),imageRef=useRef<HTMLInputElement>(null);
  const visibleDates=dates;
  const todayIndex=visibleDates.indexOf(new Date().toISOString().slice(0,10)),dayIndex=visibleDates.length?Math.min(selectedDayIndex??(todayIndex>=0?todayIndex:0),visibleDates.length-1):0;
  const windowStart=Math.floor(dayIndex/renderedDayLimit)*renderedDayLimit,renderDates=visibleDates.slice(windowStart,windowStart+renderedDayLimit),hasPreviousWindow=windowStart>0,hasNextWindow=windowStart+renderedDayLimit<visibleDates.length;
- const hours=[...topRows,...hourRows(0,23)];
+ const hours=[...topRows,...hourRows(showFullDay?0:8,showFullDay?23:22)];
  const flightSegmentsByCell=useMemo(()=>buildFlightSegments(visibleDates,rows),[visibleDates,rows]);
  const byCell=useMemo(()=>{const map=new Map<string,SheetAgenda[]>();for(const row of rows){if(isSyncedFlight(row))continue;const key=`${row.startsAt.slice(0,10)}|${cellKey(row)}`,list=map.get(key)??[];list.push(row);map.set(key,list)}return map},[rows]);
  const jumpWindow=(direction:-1|1)=>{const target=Math.max(0,Math.min(visibleDates.length-1,windowStart+direction*renderedDayLimit));setSelectedDayIndex(target);setScrolledX(false)};
