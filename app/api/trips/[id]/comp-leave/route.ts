@@ -16,7 +16,7 @@ export async function GET(_:NextRequest,{params}:{params:Promise<{id:string}>}){
  if(!user)return NextResponse.json({error:"authentication_required"},{status:401});
  if(!await requireTripMember(id,user.email))return NextResponse.json({error:"forbidden"},{status:403});
  const {row}=await findOwn(id,user.email);
- return NextResponse.json({overrideHalfUnits:row?.halfUnits??null});
+ return NextResponse.json({currentUserEmail:user.email,overrideHalfUnits:row?.halfUnits??null});
 }
 
 export async function PATCH(request:NextRequest,{params}:{params:Promise<{id:string}>}){
