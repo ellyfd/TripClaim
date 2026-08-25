@@ -23,6 +23,7 @@ test("the selected trip and stage are canonical URL state",async()=>{
  assert.match(page,/searchParams\.set\("trip",trip\.id\)/);
  assert.match(page,/searchParams\.set\("stage",target\)/);
  assert.match(page,/popstate/);
+ assert.match(page,/target:\s*TripStage="overview"/);
  for(const source of [create,itinerary,expense])assert.doesNotMatch(source,/sessionStorage/);
  assert.match(itinerary,/\{tripId\}:\{tripId:string\}/);
  assert.match(expense,/\{tripId\}:\{tripId:string\}/);
@@ -82,15 +83,18 @@ test("agenda defaults to business hours with pinned travel rows",async()=>{
  assert.match(source,/pinned-stay/);
 });
 
-test("primary shell exposes one three-stage workflow and adaptive workbench",async()=>{
+test("primary shell exposes one consistent trip workspace IA and adaptive workbench",async()=>{
  const [page,styles]=await Promise.all([
   read("app/page.tsx"),
   readStyles(),
  ]);
- assert.match(page,/aria-label="主要流程"/);
- assert.match(page,/<i>1<\/i>我的出差/);
- assert.match(page,/<i>2<\/i>共同行程/);
- assert.match(page,/<i>3<\/i>我的報帳/);
+ assert.match(page,/aria-label="Trip workspace"/);
+ assert.match(page,/<i>⌂<\/i>全部出差/);
+ assert.match(page,/<i>1<\/i>總覽/);
+ assert.match(page,/<i>2<\/i>行程/);
+ assert.match(page,/<i>3<\/i>行前準備/);
+ assert.match(page,/<i>4<\/i>我的報支/);
+ assert.match(page,/aria-label="手機工作區"/);
  assert.match(styles,/--app-max:1440px/);
  assert.match(styles,/--aside-width:288px/);
  assert.match(styles,/grid-template-columns:minmax\(0,1fr\) var\(--aside-width\)/);
@@ -137,7 +141,7 @@ test("document extraction preserves AI evidence and human confirmation",async()=
 test("manual flight registration starts with outbound and return segments",async()=>{
  const source=await read("app/TripTodoPanel.tsx");
  assert.match(source,/(?:next|base)==="flight"\?\[blankLeg\(\),blankLeg\(\)\]/);
- assert.match(source,/來回票只建立一筆本人報支/);
+ assert.match(source,/來回／多航段只建立一筆本人報支/);
  assert.match(source,/新增轉機航段/);
 });
 
@@ -321,7 +325,7 @@ test("expense workbench uses a desktop drawer and a mobile task order",async()=>
  assert.match(styles,/\.expense-side-documents\{order:4\}/);
 });
 
-test("mobile itinerary is a focused today mode with persistent navigation",async()=>{
+test("mobile itinerary stays focused on today while navigation follows the shared workspace IA",async()=>{
  const [agenda,page,styles]=await Promise.all([
   read("app/AgendaSheet.tsx"),
   read("app/page.tsx"),
@@ -331,7 +335,12 @@ test("mobile itinerary is a focused today mode with persistent navigation",async
  assert.match(agenda,/mobile-agenda-title">今日行程/);
  assert.match(page,/const mobileBottomNav=<nav/);
  assert.doesNotMatch(page,/const mobileBottomNav=activeTrip&&/);
- assert.match(page,/>今日<\/span>/);
+ assert.match(page,/aria-label="手機工作區"/);
+ assert.match(page,/>總覽<\/span>/);
+ assert.match(page,/>行程<\/span>/);
+ assert.match(page,/>準備<\/span>/);
+ assert.match(page,/>報支<\/span>/);
+ assert.doesNotMatch(page,/className="camera"/);
  assert.match(styles,/\.agenda-sheet-editor\{position:fixed!important/);
  assert.match(styles,/\.agenda-toolbar-actions>\.agenda-view-toggle/);
 });

@@ -70,8 +70,8 @@
 
 | # | 航班 | Departure | Arrival | 結果 |
 | --- | --- | --- | --- | --- |
-| 1 |  |  |  | ☐ Pass ☐ Fail |
-| 2 |  |  |  | ☐ Pass ☐ Fail |
+| 1 | BR87 | TPE・2026/06/15 23:30 | CDG・2026/06/16 08:05 | ☐ Pass ☐ Fail |
+| 2 | BR88 | CDG・2026/06/25 11:20 | TPE・2026/06/26 06:55 | ☐ Pass ☐ Fail |
 | 3 |  |  |  | ☐ Pass ☐ Fail |
 | 4 |  |  |  | ☐ Pass ☐ Fail |
 
@@ -86,7 +86,7 @@
 
 ### D3. 從任一航段刪除整張訂單
 
-從哪一段執行刪除：
+### F3. 確認並同步
 
 - [ ] 刪除提示明確寫「永久刪除整張訂單」。
 - [ ] 去程、回程、轉機等同 source order 所有航段全部消失。
@@ -110,20 +110,18 @@
 
 ### D5. 第二次確認並同步
 
-- [ ] 同步後 itinerary 只存在第二次的新 source order。
+- [ ] 同步後行程只存在第二次的新 source order projection。
 - [ ] 不同時存在新舊航段。
 - [ ] 不產生第二份重複機票報支。
-- [ ] 重新整理後結果不變。
+- [ ] Reload 後結果不變。
 
 ## E. 住宿真人必測流程
 
-- [ ] 上傳住宿文件。
+- [ ] 從「行前準備 → 我的行前資料」上傳住宿文件。
 - [ ] 飯店名稱可辨識／可人工確認。
-- [ ] check-in 日期正確。
-- [ ] itinerary startsAt 固定為 check-in 日 **15:00**。
-- [ ] check-out 日期正確。
-- [ ] itinerary endsAt 固定為 check-out 日 **11:00**。
-- [ ] PDF 中付款時間、建立訂單時間等其他 timestamp 不覆蓋 15:00／11:00。
+- [ ] check-in 日期正確，startsAt 固定 **15:00**。
+- [ ] check-out 日期正確，endsAt 固定 **11:00**。
+- [ ] 付款時間／建立訂單時間不得覆蓋 15:00／11:00。
 - [ ] 城市或地址辨識不到時仍可確認同步。
 - [ ] 住宿直接出現在共同行程住宿列，不建立另外一套行程資料。
 - [ ] 重新整理後結果不變。
@@ -197,7 +195,13 @@
 - [ ] Travel order 刪除後可見資料復活或留下 ghost。
 - [ ] 同檔重傳直接載入舊 upload／舊辨識結果，而不是一份新的上傳流程。
 - [ ] 確認同步後新舊 travel order 同時存在。
-- [ ] 機票漏實際航段或 departure／arrival 日期時間錯誤。
+- [ ] BR87 去程缺 `CDG` 或 `2026/06/16 08:05`。
+- [ ] 其他實際航段漏段或 departure／arrival 日期時間錯誤。
+- [ ] CI73／CI74 任一 local time、IANA timezone、UTC-derived duration 或 timezone difference 錯誤。
+- [ ] CI73 顯示成 8h35m 等 local-clock subtraction 結果，而不是 15h35m。
+- [ ] Calendar projection 無法顯示實際 arrival day，或反過來靜默改寫 Trip 正式 end date。
+- [ ] 無法 deterministic resolve 的 airport timezone 被系統靜默猜值，而不是要求確認。
+- [ ] D1 未套用 migration 0024，出現 `no such column: departure_timezone`／`arrival_timezone`／對應 UTC 欄位錯誤。
 - [ ] 住宿不是 15:00 check-in／11:00 checkout。
 - [ ] 報支總額與明細／ZIP 不一致。
 - [ ] 原始幣別或原始文件遺失。
