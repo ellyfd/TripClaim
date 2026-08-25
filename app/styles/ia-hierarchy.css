@@ -10,6 +10,10 @@
 .shared-booking-details>.booking-list{padding:0 14px 14px;border-top:1px solid var(--line)}
 .shared-booking-details .booking-list-head{padding-top:12px!important;border-top:0!important}
 .agenda-view-status{min-height:36px;padding:0 11px;display:inline-flex;align-items:center;border:1px solid #b8c9c1;border-radius:8px;background:#edf5f1;color:var(--green);font-size:12px;font-weight:800;white-space:nowrap}
+.comp-leave-mode{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:8px 0;padding:8px 9px;border-radius:7px;background:#eef5f1}
+.comp-leave-mode b{font-size:12px;color:var(--green)}
+.comp-leave-mode button{min-height:36px;padding:0 9px;border:1px solid #a9c3b7;border-radius:7px;background:#fff;color:var(--green);font-weight:800}
+.comp-leave-status{margin:7px 0;color:var(--muted);font-size:12px;line-height:1.4}
 @media(min-width:801px){
  .trip-context-nav{grid-template-columns:1fr}
  .trip-context-nav .back{display:none}
@@ -23,4 +27,7 @@
  .shared-booking-details>summary small{font-size:13px;line-height:1.35}
  .shared-booking-details>.booking-list{padding:0 10px 10px}
  .agenda-view-status{min-height:44px;padding:0 10px;font-size:13px}
+ .comp-leave-mode{align-items:stretch;flex-direction:column}
+ .comp-leave-mode button{min-height:44px}
+ .comp-leave-status{font-size:13px}
 }
