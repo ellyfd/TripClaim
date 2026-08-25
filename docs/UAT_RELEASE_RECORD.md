@@ -1,6 +1,6 @@
 # TripClaim 最終 UAT／發布觀察紀錄
 
-用途：Sprint 8／Audit remediation 最後真人閘門。此文件只要求真人驗證「使用者看得到、做得到」的正式站流程；已由 CI 覆蓋的 internal invariant 不要求測試者開 DevTools、抄 UUID 或直接打 legacy API。
+用途：Sprint 8／Audit remediation／Flight Calendar & Timezone Integrity 最後真人閘門。此文件只要求真人驗證「使用者看得到、做得到」的正式站流程；已由 CI 覆蓋的 internal invariant 不要求測試者開 DevTools、抄 UUID 或直接打 legacy API。
 
 **沒有完成本紀錄，不將「GitHub main 已合併」視為「正式站已驗收」。**
 
@@ -8,17 +8,17 @@
 
 ### A1. Runtime／CI 已驗證
 
-- **Runtime release candidate SHA**：`fc584347383ab40b3c9fc62bbf99f948bb7e68a7`
-- 對應 PR：`#87 Harden async lifecycle and long-trip agenda rendering`
-- CI tested head：`eef83256dcf123bf3fc9e19c8ef4a3e1a124140f`
-- GitHub Actions：Auto test & merge `run #116`（run id `32107106389`）・success
+- **Runtime release candidate SHA**：`ced77248140b0a696ead06b3b8e26b887f6ca98c`
+- 對應 PR：`#91 Store canonical flight endpoint timezones and UTC instants`
+- CI tested head：`cc39eb026583cb6b463d337541445eba7a5c08de`
+- GitHub Actions：Auto test & merge `run #122`（run id `32842598637`）・success
 - Build：Pass
 - Sites artifact validation：Pass
-- Automated tests：`136 / 136` Pass・`0` Fail
-- D1 migration 最新版本：`0023_pending_object_deletions.sql`
-- Execution Plan 最後更新：2026-08-18
+- Automated tests：`146 / 146` Pass・`0` Fail
+- D1 migration 最新版本：`0024_flight_endpoint_timezones.sql`
+- Execution Plan 最後更新：2026-08-25
 
-本 runtime candidate 已包含 2026-08-18 Product / UX / Technical Audit remediation 與後續 P2 launch-hardening：
+本 runtime candidate 已包含 2026-08-18 Product / UX / Technical Audit remediation、P2 launch-hardening、24h Calendar 與 canonical flight timezone data model：
 
 - [x] 行程 create/edit 使用 isolated draft；server acknowledgement + reload 後才成為 persisted state。
 - [x] 移除跨 trip 假日期／stale state；workspace 以 tripId remount 並防舊 response 覆蓋。
@@ -31,12 +31,18 @@
 - [x] 行程 Save／Delete 有 busy lock、Loading → Success／Error，可阻擋重複 mutation；Save 失敗保留 draft。
 - [x] 文件 load failure 與真正 empty state 分離；文件 Save／Delete 有 pending lock；Card Evidence Matcher 有 loading／error／retry，不再 silent catch。
 - [x] 長行程 desktop grid 每次最多 render 7 天；前／後 7 天可走完整旅程；mobile 仍可到達全部日期。
+- [x] Calendar 固定顯示 00:00–23:00；夜間／凌晨航班不再依賴「完整 24 小時」toggle。
+- [x] Synced flight 依 departure → arrival 顯示跨日 travel band；實際抵達日超出 Trip end date 時，只延伸 Calendar projection，不改 Trip 正式日期。
+- [x] Flight booking 保存 departure / arrival 各自 local datetime + IANA timezone + UTC absolute instant；真實 duration 由 UTC 計算。
+- [x] CI73 `TPE 2026-11-03 23:15 → AMS 2026-11-04 07:50` = `15h35m`，時差 `-7h` exact regression Pass。
+- [x] CI74 `AMS 2026-11-06 15:35 → TPE 2026-11-07 10:40` = `12h05m`，時差 `+7h` exact regression Pass。
+- [x] Amsterdam summer / winter DST conversion 使用 IANA timezone rules exact regression Pass。
 - [x] BR87 `TPE → CDG`，`2026-06-15 23:30 → 2026-06-16 08:05` exact-value fixture Pass。
 - [x] BR88 `CDG → TPE`，`2026-06-25 11:20 → 2026-06-26 06:55` exact-value fixture Pass。
 - [x] EVA compact `HHMM` text layer outbound fixture Pass。
 - [x] Travel whole-order delete／replace／fresh upload／no-restore／storage tombstone guards Pass。
 
-> **基線判定規則**：`docs/`、README、UAT 紀錄等純文件 commit 可以高於 runtime candidate，不改變 runtime。若 `fc584347...` 之後有任何會影響執行結果的程式／schema／build commit（例如 `app/`、`db/`、`drizzle/`、`public/`、runtime scripts、dependencies），必須重新跑完整 CI 並重建本區基線。
+> **基線判定規則**：`docs/`、README、UAT 紀錄等純文件 commit 可以高於 runtime candidate，不改變 runtime。若 `ced772...` 之後有任何會影響執行結果的程式／schema／build commit（例如 `app/`、`db/`、`drizzle/`、`public/`、runtime scripts、dependencies），必須重新跑完整 CI 並重建本區基線。
 
 ### A2. 本次 Sites 驗收
 
@@ -45,7 +51,8 @@
 - Sites production URL：`https://quick-trip-claim.ellyfd.chatgpt.site/`
 - Sites version / checkpoint：
 - GitHub main SHA（發布當下留存稽核；docs-only commit 可高於 runtime candidate）：
-- 實際 runtime candidate：`fc584347383ab40b3c9fc62bbf99f948bb7e68a7`
+- 實際 runtime candidate：`ced77248140b0a696ead06b3b8e26b887f6ca98c`
+- D1 migration：`0024_flight_endpoint_timezones.sql` ☐ 已套用
 - 瀏覽器／裝置：
 - 測試 Trip ID：
 
@@ -69,6 +76,10 @@
 - [x] Itinerary mutation busy lock／failure draft retention。
 - [x] Document load/save/delete/matcher failure-state contract。
 - [x] Long-trip agenda desktop 7-day render-window contract。
+- [x] 24h Calendar contract：固定 00:00–23:00，沒有 08:00–22:00 隱藏模式。
+- [x] CI73／CI74 cross-day travel-band placement contract。
+- [x] Endpoint IANA timezone → UTC conversion、DST 與真實 flight duration contract。
+- [x] Migration 0024 為 additive schema contract；booking 保持 timezone canonical SoT，Agenda 只作 projection。
 
 ## C. 最小真人測試資料
 
@@ -78,6 +89,7 @@
 - [ ] 一般 non-travel 收據 1 張。
 - [ ] 至少兩趟不同日期的測試 Trip，用來驗證切換時不顯示上一趟 stale state。
 - [ ] 一趟至少 15 天、理想 31 天的測試 Trip，用來驗證長行程 window 與所有日期可達性。
+- [ ] Amsterdam fixture 或等價跨時區航班，可驗證兩端 local time／IANA timezone／UTC duration。
 
 > 不使用其他人的私人文件。正式 UAT 可使用本人文件或去識別化測試資料。
 
@@ -120,12 +132,13 @@
 - [ ] 點「放棄草稿」並確認後，草稿消失；reload 後不復活。
 - [ ] 編輯既有 Trip 後返回，不得污染／重建「建立新出差」草稿。
 
-### D5. 31 天／長行程 render window
+### D5. 31 天／長行程 render window + 24h Calendar
 
 - [ ] Desktop 開啟長行程時，一次只顯示／掛載最多 7 天 grid，而不是把 31 天全部塞在同一張表。
 - [ ] 「前 7 天／後 7 天」可連續到達旅程第一天與最後一天，無日期漏失。
 - [ ] 切換 7-day window 後活動仍對應正確日期；不得顯示上一 window 的 stale cell。
-- [ ] 預設仍為 08:00–22:00；使用者可切完整 24 小時。
+- [ ] Calendar 固定顯示 **00:00–23:00**；不存在 08:00–22:00 模式或「完整 24 小時」toggle。
+- [ ] 23:00、00:00、凌晨航班／活動可直接在時間軸找到，不需額外開啟隱藏時段。
 - [ ] Mobile 日期列仍能到達整趟旅程所有日期，不因 desktop 7-day window 而只剩 7 天。
 
 ## E. Audit Critical Journey：文件／報支互動
@@ -163,28 +176,44 @@
 - [ ] 從 **「行前準備 → 我的行前資料」** 唯一 travel intake 上傳機票。
 - [ ] 上傳後有明確成功／辨識中／需確認回饋，不是無反應。
 - [ ] parser 顯示所有實際航段。
-- [ ] 每段均有正確出發機場、出發日期時間、抵達機場、抵達日期時間。
+- [ ] 每段均有正確出發機場、**出發日期時間（當地）**、抵達機場、**抵達日期時間（當地）**。
+- [ ] 每段 flight 顯示／可確認出發 IANA timezone 與抵達 IANA timezone，例如 `Asia/Taipei`、`Europe/Amsterdam`。
+- [ ] 若機場無法 deterministic 判定 timezone，UI 要求人工確認；不得靜默猜一個固定 `UTC+N`。
 - [ ] BR87 去程不得只剩 `TPE + 出發時間`；必須看到 `CDG + 2026/06/16 08:05`。
 - [ ] 跨日航段以真正抵達日期作為 endAt。
 - [ ] 多航段／來回只顯示一筆整張票金額。
 
-| # | 航班 | Departure | Arrival | 結果 |
+| # | 航班 | Departure local | Arrival local | 結果 |
 | --- | --- | --- | --- | --- |
 | 1 | BR87 | TPE・2026/06/15 23:30 | CDG・2026/06/16 08:05 | ☐ Pass ☐ Fail |
 | 2 | BR88 | CDG・2026/06/25 11:20 | TPE・2026/06/26 06:55 | ☐ Pass ☐ Fail |
 | 3 |  |  |  | ☐ Pass ☐ Fail |
 | 4 |  |  |  | ☐ Pass ☐ Fail |
 
-### F2. 確認並同步
+### F2. Amsterdam timezone / duration regression
+
+正式 Trip 日期可維持 `2026-11-03 → 2026-11-06`；Calendar projection 可因實際抵達延伸到 11/07。
+
+- [ ] CI73 顯示：`TPE・2026-11-03 23:15・Asia/Taipei (UTC+8)` → `AMS・2026-11-04 07:50・Europe/Amsterdam (UTC+1)`。
+- [ ] CI73 顯示真實飛行 **15h35m**、時差 **-7h**；不得以 local clock 直接相減顯示 8h35m。
+- [ ] CI74 顯示：`AMS・2026-11-06 15:35・Europe/Amsterdam (UTC+1)` → `TPE・2026-11-07 10:40・Asia/Taipei (UTC+8)`。
+- [ ] CI74 顯示真實飛行 **12h05m**、時差 **+7h**。
+- [ ] CI73 travel band 從 11/03 23:15 延續至 11/04 07:50；去程不可消失。
+- [ ] CI74 travel band 從 11/06 15:35 延續至 11/07 10:40。
+- [ ] Calendar 出現 11/07 抵達欄，但 Trip 正式 end date 仍是 11/06，不被 projection 靜默改寫。
+- [ ] Flight band／booking card 的 offset 與 duration 一致。
+- [ ] IANA timezone 為 canonical；畫面可顯示 UTC+offset，但不可只保存固定 offset 當真相。
+
+### F3. 確認並同步
 
 - [ ] 按「確認並同步」有明確完成回饋。
 - [ ] 所有實際航段直接投影到「行程」。
 - [ ] 不建立另一套可獨立修改的 travel event／booking 真相。
 - [ ] 本人報支只形成一筆整張機票費用。
 - [ ] 機票 TODO 由「訂單同步」管理，不能手動偽造完成。
-- [ ] Reload 後資料仍一致。
+- [ ] Reload 後 local time、timezone、duration、projection 仍一致。
 
-### F3. 從任一航段刪除整張訂單
+### F4. 從任一航段刪除整張訂單
 
 - [ ] 刪除提示明確寫「永久刪除整張訂單」。
 - [ ] 同 source order 的去程、回程、轉機全部消失。
@@ -194,7 +223,7 @@
 - [ ] Reload 後不復活。
 - [ ] Shared booking、TODO、行程、報支都沒有舊 state。
 
-### F4. 同一檔案重新上傳
+### F5. 同一檔案重新上傳
 
 - [ ] 使用 F1 完全相同機票檔案重新上傳。
 - [ ] UI 重新跑讀取／辨識流程，不直接載入第一次舊結果。
@@ -202,7 +231,7 @@
 - [ ] BR87／BR88 再次完整讀出。
 - [ ] 可以正常再次「確認並同步」。
 
-### F5. 第二次確認並同步
+### F6. 第二次確認並同步
 
 - [ ] 同步後行程只存在第二次的新 source order projection。
 - [ ] 不同時存在新舊航段。
@@ -239,7 +268,7 @@
 - 最舊等待：
 - 最高 attempts：
 
-完成 F3 刪除後：
+完成 F4 刪除後：
 
 - Pending：
 - 最舊等待：
@@ -249,7 +278,7 @@
 - [ ] 正常情況 pending = 0，或短暫出現後重試回到 0。
 - [ ] 管理頁不顯示實際 R2 object key。
 - [ ] 若已有 pending，可按「重試待清理附件」，結果有明確回饋。
-- [ ] pending 持續增加或最舊等待 >24 小時時，判定 No-Go。
+- [ ] pending 持續增加或**最舊項目超過 24 小時**時，判定 No-Go。
 
 ## J. 報支／匯出 reconciliation
 
@@ -270,15 +299,17 @@
 - [ ] 操作型 control 至少 44×44px；行程 Bottom Sheet 不被 safe area 遮住。
 - [ ] 手機「行程」仍是單日／Today-focused，不顯示縮小大型 Excel。
 - [ ] Desktop 長行程 7-day window 導覽可達全部日期；mobile 所有日期仍可達。
+- [ ] Desktop／mobile Calendar 都能到達 00:00–23:00，23:15 departure 不被隱藏。
+- [ ] Flight endpoint timezone 欄位／offset／真實 duration 在窄螢幕不截斷成不可理解資訊。
 
 ## L. 48 小時觀察
 
-| 時間 | 上傳失敗 | OCR 待確認 | Pending storage | 最舊等待 | 匯出差額 | Stale/persistence issue | Duplicate mutation | 備註 |
-| --- | ---: | ---: | ---: | --- | ---: | ---: | ---: | --- |
-| T+0 |  |  |  |  |  |  |  |  |
-| T+4h |  |  |  |  |  |  |  |  |
-| T+24h |  |  |  |  |  |  |  |  |
-| T+48h |  |  |  |  |  |  |  |  |
+| 時間 | 上傳失敗 | OCR 待確認 | Pending storage | 最舊等待 | 匯出差額 | Stale/persistence issue | Duplicate mutation | Flight timezone/duration issue | 備註 |
+| --- | ---: | ---: | ---: | --- | ---: | ---: | ---: | ---: | --- |
+| T+0 |  |  |  |  |  |  |  |  |  |
+| T+4h |  |  |  |  |  |  |  |  |  |
+| T+24h |  |  |  |  |  |  |  |  |  |
+| T+48h |  |  |  |  |  |  |  |  |  |
 
 ## M. Go / No-Go
 
@@ -290,6 +321,7 @@
 - [ ] 文件搜尋無匹配仍顯示舊文件，或文件確認無法取消。
 - [ ] 文件 load／matcher failure 被偽裝成真正 empty／0 candidate，沒有可見 error path。
 - [ ] 31 天 desktop 行程一次掛載全部日期，或 7-day window／mobile 日期列無法到達任一實際旅程日期。
+- [ ] Calendar 不是固定 00:00–23:00，或夜間／凌晨 flight 因隱藏時段消失。
 - [ ] Desktop／mobile 出現兩套互相矛盾的 workspace IA。
 - [ ] 有使用者可讀到他人的私人附件／卡片／報支。
 - [ ] Travel order 刪除後可見資料復活或留下 ghost。
@@ -297,12 +329,17 @@
 - [ ] 確認同步後新舊 travel order 同時存在。
 - [ ] BR87 去程缺 `CDG` 或 `2026/06/16 08:05`。
 - [ ] 其他實際航段漏段或 departure／arrival 日期時間錯誤。
+- [ ] CI73／CI74 任一 local time、IANA timezone、UTC-derived duration 或 timezone difference 錯誤。
+- [ ] CI73 顯示成 8h35m 等 local-clock subtraction 結果，而不是 15h35m。
+- [ ] Calendar projection 無法顯示實際 arrival day，或反過來靜默改寫 Trip 正式 end date。
+- [ ] 無法 deterministic resolve 的 airport timezone 被系統靜默猜值，而不是要求確認。
+- [ ] D1 未套用 migration 0024，出現 `no such column: departure_timezone`／`arrival_timezone`／對應 UTC 欄位錯誤。
 - [ ] 住宿不是 15:00 check-in／11:00 checkout。
 - [ ] 報支總額與明細／ZIP 不一致。
 - [ ] 原始幣別或原始文件遺失。
 - [ ] 系統健康 API／頁面無法使用。
-- [ ] Pending storage cleanup 持續增加或最舊項目 >24 小時仍未清除。
-- [ ] Runtime candidate `fc584347...` 之後出現程式／schema／build 變更，但沒有新的完整 CI baseline。
+- [ ] Pending storage cleanup 持續增加或**最舊項目超過 24 小時**仍未清除。
+- [ ] Runtime candidate `ced772...` 之後出現程式／schema／build 變更，但沒有新的完整 CI baseline。
 
 最終決策：**☐ GO　☐ NO-GO**
 
