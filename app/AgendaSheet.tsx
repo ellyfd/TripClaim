@@ -22,7 +22,7 @@ const flightMeta=(item:SheetAgenda)=>{
 };
 
 export default function AgendaSheet({dates,rows,onAdd,onEdit,onDelete}:{dates:string[];rows:SheetAgenda[];onAdd:(date:string,time:string)=>void;onEdit:(row:SheetAgenda)=>void;onDelete:(row:SheetAgenda)=>void}){
- const [selectedDayIndex,setSelectedDayIndex]=useState<number|null>(null),[importMessage,setImportMessage]=useState(""),[density,setDensity]=useState<"overview"|"edit">("overview"),[scrolledX,setScrolledX]=useState(false);const fileRef=useRef<HTMLInputElement>(null),imageRef=useRef<HTMLInputElement>(null);
+ const [selectedDayIndex,setSelectedDayIndex]=useState<number|null>(null),[importMessage,setImportMessage]=useState(""),[scrolledX,setScrolledX]=useState(false);const fileRef=useRef<HTMLInputElement>(null),imageRef=useRef<HTMLInputElement>(null);
  const visibleDates=dates;
  const todayIndex=visibleDates.indexOf(new Date().toISOString().slice(0,10)),dayIndex=visibleDates.length?Math.min(selectedDayIndex??(todayIndex>=0?todayIndex:0),visibleDates.length-1):0;
  const windowStart=Math.floor(dayIndex/renderedDayLimit)*renderedDayLimit,renderDates=visibleDates.slice(windowStart,windowStart+renderedDayLimit),hasPreviousWindow=windowStart>0,hasNextWindow=windowStart+renderedDayLimit<visibleDates.length;
@@ -36,14 +36,14 @@ export default function AgendaSheet({dates,rows,onAdd,onEdit,onDelete}:{dates:st
  return <section className="agenda-sheet-wrap">
   <div className="agenda-sheet-toolbar">
    <div><b><span className="desktop-agenda-title">共同行程表</span><span className="mobile-agenda-title">今日行程</span></b><span>固定顯示 00:00–23:00；一般活動可直接編輯，機票／住宿由原始訂單同步</span></div>
-   <div className="agenda-toolbar-actions"><div className="agenda-view-toggle"><button className={density==="overview"?"on":""} onClick={()=>setDensity("overview")}>全天總覽</button><button className={density==="edit"?"on":""} onClick={()=>setDensity("edit")}>舒適編輯</button></div><button onClick={()=>fileRef.current?.click()}>↑ 匯入 Excel／CSV</button><button onClick={()=>imageRef.current?.click()}>▧ 讀取截圖／PDF</button><input ref={fileRef} hidden type="file" accept=".xlsx,.xls,.csv" onChange={e=>importFile(e.target.files?.[0])}/><input ref={imageRef} hidden type="file" accept="image/*,.pdf" onChange={e=>imageFile(e.target.files?.[0])}/></div>
+   <div className="agenda-toolbar-actions"><div className="agenda-view-toggle" aria-label="顯示範圍"><button type="button" className="on" aria-pressed="true">完整 24 小時</button></div><button onClick={()=>fileRef.current?.click()}>↑ 匯入 Excel／CSV</button><button onClick={()=>imageRef.current?.click()}>▧ 讀取截圖／PDF</button><input ref={fileRef} hidden type="file" accept=".xlsx,.xls,.csv" onChange={e=>importFile(e.target.files?.[0])}/><input ref={imageRef} hidden type="file" accept="image/*,.pdf" onChange={e=>imageFile(e.target.files?.[0])}/></div>
   </div>
   {visibleDates.length>renderedDayLimit&&<div className="agenda-window-nav" aria-label="長行程日期區段"><button disabled={!hasPreviousWindow} onClick={()=>jumpWindow(-1)}>← 前 7 天</button><span>顯示第 {windowStart+1}–{windowStart+renderDates.length} 天，共 {visibleDates.length} 天</span><button disabled={!hasNextWindow} onClick={()=>jumpWindow(1)}>後 7 天 →</button></div>}
   {importMessage&&<div className="agenda-import-message"><span>{importMessage}</span><button onClick={()=>setImportMessage("")}>關閉</button></div>}
   <div className="agenda-mobile-days">{visibleDates.map((d,i)=><button className={i===dayIndex?"on":""} key={d} onClick={()=>{setSelectedDayIndex(i);setScrolledX(false)}}>{dayLabel(d)}</button>)}</div>
   <div className="agenda-sheet-scrollwrap">
   {renderDates.length>4&&!scrolledX&&<span className="sheet-scroll-more" aria-hidden="true">→ 橫向捲動看此段更多天</span>}
-  <div className={`agenda-sheet density-${density}`} onScroll={e=>{if(e.currentTarget.scrollLeft>40)setScrolledX(true)}}>
+  <div className="agenda-sheet density-overview" onScroll={e=>{if(e.currentTarget.scrollLeft>40)setScrolledX(true)}}>
    <div className="agenda-grid" style={{gridTemplateColumns:`76px repeat(${renderDates.length}, minmax(154px, 1fr))`}}>
     <div className="sheet-corner">時間</div>{renderDates.map((d,i)=>{const originalIndex=windowStart+i;return <div className={`sheet-date ${originalIndex===dayIndex?"mobile-active":""}`} key={d}>{dayLabel(d)}</div>})}
     {hours.map(time=><div className="sheet-row" key={time}>
