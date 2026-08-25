@@ -1,6 +1,6 @@
 # TripClaim 執行優化規劃書
 
-最後更新：2026-08-18  
+最後更新：2026-08-25  
 決策角色：CPO、CTO、IA、UIUX、財務流程  
 產品主流程：建立出差 → 出差總覽 → 行程／行前準備／我的報支
 
@@ -16,6 +16,7 @@
 8. 同一報支項目若申報幣別不同，彙總、Excel 與 ZIP 必須分行、分組。
 9. 同行者可共編 shared itinerary，但每個人的信用卡、文件、報支與缺件狀態維持私有；他人未完成不得阻擋本人。
 10. 機票與住宿是 travel order，不是彼此獨立的卡片。正式 travel order 必須以「整張 source-order graph」建立、取代與刪除；任何單一航段不得自行脫離訂單生命週期。
+11. 跨時區航班不得使用「整趟 Trip 一個 timezone」或單一 booking timezone 當真相；departure / arrival 各自保存當地時間 + IANA timezone，UTC 只作絕對時間、duration 與 audit。
 
 ## 二、生命週期入口
 
@@ -107,7 +108,7 @@
 - [x] 「行前準備」集中本人機票、住宿、待辦與補休。
 - [x] 「我的報支」集中本人費用、文件、缺件、卡片與匯出。
 - [x] 同行者訂單比較以 source order 為單位，不以每個航段建立重複訂單卡。
-- [x] 全天與住宿置頂；行程預設顯示 08:00–22:00。
+- [x] 全天與住宿置頂；Calendar 固定顯示 00:00–23:00，沒有 08:00–22:00 隱藏模式。
 - [x] 全部出差主要 CTA 改為「開啟出差」並先進 Overview。
 
 完成定義：Shared itinerary、Personal preparation、Personal claim ownership 分離；資料來源維持 Booking / Document / Expense / Agenda 原本責任，不因 IA 重構複製資料。
@@ -159,33 +160,49 @@ Audit 初始判定為 NO-GO；下列 code remediation 已完成：
 - [x] 行程 Save／Delete 加入明確 Loading → Success／Error lifecycle；mutation 期間鎖定重複送出，Save 失敗保留未儲存 draft。
 - [x] 文件列表 load failure 與真正 empty state 分離；Save／Delete 有 per-action pending lock、成功後 server reload confirmation 與可見錯誤。
 - [x] Card Evidence Matcher 移除 silent catch，加入 loading／error／retry 狀態，不再把候選載入失敗偽裝成「沒有可配對費用」。
-- [x] 31 天長行程 desktop grid 每次最多掛載 7 天，保留前／後 7 天切換；手機日期列仍可到達全部日期；預設 08:00–22:00 不變。
+- [x] 31 天長行程 desktop grid 每次最多掛載 7 天，保留前／後 7 天切換；手機日期列仍可到達全部日期。
 - [x] 新增 `tests/audit-async-performance-regression.test.mjs`，並只調整舊 source-regex 以容許 busy guard，不弱化 rollback／Cancel 契約。
 - [x] Runtime baseline `fc584347383ab40b3c9fc62bbf99f948bb7e68a7`（PR #87），tested head `eef83256dcf123bf3fc9e19c8ef4a3e1a124140f`，CI run #116（run id `32107106389`），build + Sites artifact validation + **136/136 tests** Pass。
 
-完成定義：原 Audit 已知 async lifecycle 與長行程 DOM 掛載缺口完成 code-side hardening；沒有已知 Audit P1/P2 runtime backlog。正式站仍須依 Final Release Gate 驗證實際 Sites behavior 與效能體感。
+完成定義：原 Audit 已知 async lifecycle 與長行程 DOM 掛載缺口完成 code-side hardening。
+
+### Sprint 11：Flight Calendar / Timezone Integrity（P1）
+
+- [x] PR #89：synced flight 不再只畫起飛那一個 hour cell；依 `startsAt → endsAt` 畫跨日 travel band，實際抵達超過 Trip end date 時只延伸 Calendar projection，不偷偷改正式 Trip 日期。
+- [x] Amsterdam regression：CI73 `TPE 2026-11-03 23:15 → AMS 2026-11-04 07:50` 與 CI74 `AMS 2026-11-06 15:35 → TPE 2026-11-07 10:40` 均保留完整起迄。
+- [x] PR #90：Calendar 固定 00:00–23:00，不再用 08:00–22:00 模式隱藏夜間出發，也移除「完整 24 小時」discoverability dependency。
+- [x] PR #91：`travel_bookings` 新增 canonical endpoint fields：`departure_timezone`、`departure_utc_at`、`arrival_timezone`、`arrival_utc_at`；舊單一 `timezone` 只暫留 compatibility。
+- [x] Flight intake 明確標示「出發時間（當地）／抵達時間（當地）」；IANA timezone 由 managed airport deterministic resolver 自動帶入，無法唯一判定時要求人工確認，不猜固定 offset。
+- [x] UTC conversion 使用 IANA DST 規則；真實 flight duration 由 UTC instants 相減，不直接拿兩端 local clock 相減。
+- [x] Booking 為 timezone canonical SoT；Agenda 不複製四個 canonical endpoint fields，shared itinerary 讀取時依 `booking:<id>` enrich projection。
+- [x] CI73 真實飛行時間 **15h35m / 時差 -7h**；CI74 **12h05m / 時差 +7h**；Amsterdam summer/winter DST conversion 有 executable regression。
+- [x] Additive D1 migration：`0024_flight_endpoint_timezones.sql`。
+- [x] Runtime baseline `ced77248140b0a696ead06b3b8e26b887f6ca98c`（PR #91），tested head `cc39eb026583cb6b463d337541445eba7a5c08de`，CI run #122（run id `32842598637`），build + Sites artifact validation + **146/146 tests** Pass。
+
+完成定義：跨時區航班同時保留兩端票面當地時間、IANA timezone 與 UTC 絕對時間；Calendar 不因夜間航班遺失資料，duration 不因時差被算錯。正式站仍須依 Final Release Gate 驗證 migration 0024 與實際 Sites behavior。
 
 ### Final Release Gate（唯一未完成工作）
 
 目前 release baseline：
 
 - GitHub main 可包含高於 runtime 的 docs-only commit；不得因此誤認 runtime 已改變。
-- Runtime release candidate：`fc584347383ab40b3c9fc62bbf99f948bb7e68a7`（PR #87）。
-- Tested head：`eef83256dcf123bf3fc9e19c8ef4a3e1a124140f`。
-- CI baseline：run #116（run id `32107106389`），build + Sites artifact validation + **136/136 tests** Pass。
-- D1 migration：`0023_pending_object_deletions.sql`。
+- Runtime release candidate：`ced77248140b0a696ead06b3b8e26b887f6ca98c`（PR #91）。
+- Tested head：`cc39eb026583cb6b463d337541445eba7a5c08de`。
+- CI baseline：run #122（run id `32842598637`），build + Sites artifact validation + **146/146 tests** Pass。
+- D1 migration：through `0024_flight_endpoint_timezones.sql`。
 - 唯一 operational tracker：GitHub Issue **#85 `Final Sites UAT & 48h release gate`**。
 - 驗收紀錄：`docs/UAT_RELEASE_RECORD.md`；裝置矩陣：`docs/DEVICE_QA.md`。
 
-- [ ] **Gate A — Sites Publish / checkpoint + authenticated destructive UAT**：發布包含上述 runtime candidate 的 ChatGPT Sites 版本，記錄 Sites version/checkpoint，依 #85 與 UAT 文件完成 Audit Critical Journey、async double-submit／failure lifecycle、31 天長行程 window、travel whole-order lifecycle、同檔重傳、住宿時間、一般報支 regression、storage health、export reconciliation 與 device QA。
-- [ ] **Gate B — 48h observation + GO / NO-GO**：Gate A PASS 後才開始 T+0／T+4h／T+24h／T+48h 觀察；不得出現 persistence、cross-trip stale render、duplicate mutation、travel ghost／restore、privacy、storage-health 或 financial reconciliation regression。
+- [ ] **Gate A — Sites Publish / checkpoint + authenticated destructive UAT**：發布包含上述 runtime candidate 且已套用 migration 0024 的 ChatGPT Sites 版本；依 #85 與 UAT 文件完成 Audit Critical Journey、24h Calendar、Amsterdam CI73/CI74 travel band、endpoint timezone / DST / UTC duration、travel whole-order lifecycle、同檔重傳、住宿時間、一般報支 regression、storage health、export reconciliation 與 device QA。
+- [ ] **Gate B — 48h observation + GO / NO-GO**：Gate A PASS 後才開始 T+0／T+4h／T+24h／T+48h 觀察；不得出現 persistence、cross-trip stale render、duplicate mutation、hidden flight、timezone/duration error、travel ghost／restore、privacy、storage-health 或 financial reconciliation regression。
 
 執行規則：
 
 1. Final Release Gate 的 checkbox 只在 Issue #85 與 `docs/UAT_RELEASE_RECORD.md` 記錄實際證據；已完成 Sprint 不再建立重複 release checklist。
 2. GitHub merge、CI 全綠或 Sites artifact validation 都不等於 production Sites 已驗收。
-3. Gate A 若發現 runtime defect，停止 Gate，建立獨立 fix branch／PR 與 regression coverage；完整 CI 通過、重新發布 Sites 後，從受影響 destructive flow 重新開始 Gate A。
-4. Gate A 未 PASS 不得開始 48h observation；Gate B 未 PASS 不得標記 GO。
+3. **Migration 0024 是 #91 runtime 的硬性前置條件**；若正式環境出現 `no such column: departure_timezone`／`arrival_timezone`，立即 NO-GO，不得用 fallback 隱藏 migration 缺失。
+4. Gate A 若發現 runtime defect，停止 Gate，建立獨立 fix branch／PR 與 regression coverage；完整 CI 通過、重新發布 Sites 後，從受影響 destructive flow 重新開始 Gate A。
+5. Gate A 未 PASS 不得開始 48h observation；Gate B 未 PASS 不得標記 GO。
 
 完成定義：Gate A + Gate B 均 PASS，才將 TripClaim 從 NO-GO 改為 GO。
 
@@ -202,6 +219,9 @@ Audit 初始判定為 NO-GO；下列 code remediation 已完成：
 9. 正式 travel attachment 的 D1 graph 刪除與 object deletion tombstone 必須同 batch；R2 失敗只能形成「已追蹤待清理」。
 10. Travel booking 完成狀態由正式 booking evidence 管理，不能靠手動勾選 TODO 偽造已完成。
 11. EVA regression 必須保持 BR87 `TPE → CDG` `2026-06-15 23:30 → 2026-06-16 08:05` 與 BR88 `CDG → TPE` `2026-06-25 11:20 → 2026-06-26 06:55` exact-value pass。
+12. Flight `startAt` / `endAt` 是兩端票面 local datetime；不得把其中一端強制轉成另一端 timezone 後覆蓋原值。
+13. Flight canonical timezone identity 是 IANA timezone；`UTC+N` 只能做顯示／audit，不得當 DST-safe canonical timezone。
+14. 真實飛行時間只能由 `arrivalUtcAt - departureUtcAt` 計算；跨時區 travel band 的視覺高度不得被解讀為 elapsed duration。
 
 ## 四、最終桌機與手機 IA
 
@@ -209,14 +229,14 @@ Audit 初始判定為 NO-GO；下列 code remediation 已完成：
 
 - 全部出差：出差列表、建立出差；主要 CTA「開啟出差」。
 - 總覽：進度、下一步、缺件、下一個行程；只讀 aggregation。
-- 行程：shared calendar + shared bookings。
-- 行前準備：本人 flights & stays、checklist、comp time。
+- 行程：shared calendar + shared bookings；Calendar 固定 24h；flight band 顯示兩端當地時間／offset／真實 duration。
+- 行前準備：本人 flights & stays、checklist、comp time；flight endpoint timezone 在此確認。
 - 我的報支：expenses、documents inbox、cards & statements、review & export。
 
 ### 手機
 
 - 固定 Bottom Navigation：出差、總覽、行程、準備、報支。
-- 行程頁：日期切換、全天／住宿、單日時間軸，不顯示縮小版大型 Excel。
+- 行程頁：日期切換、全天／住宿、單日 24h 時間軸，不顯示縮小版大型 Excel。
 - 行前準備：本人 travel intake／待辦／補休。
 - 我的報支：一般費用 upload、最近上傳、待確認、缺件與今日費用。
 - 不再用 mobile-only 中央「＋上傳」改變 ownership；上傳回到各自 workspace。
@@ -243,6 +263,12 @@ Audit 初始判定為 NO-GO；下列 code remediation 已完成：
 18. Save／Delete 等 mutation 進行中必須顯示 pending 狀態並鎖定重複送出；失敗不得被偽裝成成功或空資料。
 19. 文件 loading failure 必須與真正 0 文件／0 matcher candidate 分離，且提供可見 retry／error path。
 20. 31 天 desktop 行程不得一次掛載全部日期 grid；單一 window 最多 7 天，但所有日期在 desktop 與 mobile 都必須可到達。
+21. Calendar 必須固定 00:00–23:00；任何夜間／凌晨 flight 不得因預設時間範圍被隱藏。
+22. Flight Calendar projection 可延伸到實際抵達日，但不得靜默改寫正式 Trip startsOn／endsOn。
+23. 每個 flight endpoint 必須保留 local datetime + IANA timezone；無法 deterministic resolve 的 airport timezone 必須要求人工確認，不可猜。
+24. UTC conversion 必須遵守 DST；Amsterdam 2026-07 與 2026-11 的 offset 不得被固定寫死為同一值。
+25. CI73 / CI74 在 UI、booking 與 audit 中的 local time、UTC duration 與 timezone difference 必須一致。
+26. #91 runtime 上線前 D1 必須完成 migration 0024；缺欄位即 release blocker。
 
 ## 六、北極星指標
 
