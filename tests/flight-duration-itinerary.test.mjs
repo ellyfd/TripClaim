@@ -33,8 +33,10 @@ test("flight segments preserve exact departure and arrival cells across midnight
  assert.ok(segments.get("2026-11-07|05:00")?.some(x=>x.item.id==="back"));
 });
 
-test("UI exposes one fixed 24-hour calendar mode with explicit flight departure and arrival logs",async()=>{
- const [sheet,itinerary,css]=await Promise.all([read("app/AgendaSheet.tsx"),read("app/ItineraryWizardLive.tsx"),read("app/styles/audit-fixes.css")]);
+test("UI exposes one readable 24-hour calendar with a true all-day lane and unclipped flight logs",async()=>{
+ const [sheet,itinerary,css,refinement,globals]=await Promise.all([
+  read("app/AgendaSheet.tsx"),read("app/ItineraryWizardLive.tsx"),read("app/styles/audit-fixes.css"),read("app/styles/calendar-refinement.css"),read("app/globals.css")
+ ]);
  assert.match(itinerary,/calendarDatesForAgenda\(x\.trip\.startsOn,x\.trip\.endsOn,agenda\)/);
  assert.match(sheet,/const showFullDay=true/);
  assert.match(sheet,/hourRows\(showFullDay\?0:8,showFullDay\?23:22\)/);
@@ -42,7 +44,12 @@ test("UI exposes one fixed 24-hour calendar mode with explicit flight departure 
  assert.doesNotMatch(sheet,/全天總覽|舒適編輯|只看 08–22|完整 24 小時\$\{|跨夜航班・完整 24 小時/);
  assert.match(sheet,/>完整 24 小時<\/button>/);
  assert.match(sheet,/固定顯示 00:00–23:00/);
- assert.match(sheet,/className="agenda-sheet density-overview"/);
+ assert.match(sheet,/className="agenda-sheet"/);
+ assert.doesNotMatch(sheet,/className="agenda-sheet density-/);
+ assert.match(sheet,/time==="全天"\?"00:00"/);
+ assert.match(itinerary,/checked\?"00:00"/);
+ assert.match(itinerary,/全天活動/);
+ assert.match(itinerary,/不需要填開始與結束時間/);
  assert.match(sheet,/dateTimeLog/);
  assert.match(sheet,/flight-departure-log/);
  assert.match(sheet,/<strong>出發<\/strong>/);
@@ -54,4 +61,10 @@ test("UI exposes one fixed 24-hour calendar mode with explicit flight departure 
  assert.match(sheet,/flight-duration-segment/);
  assert.match(css,/Synced flight projections are duration bands/);
  assert.match(css,/\.flight-duration-segment\{/);
+ assert.ok(globals.indexOf("audit-fixes.css")<globals.indexOf("calendar-refinement.css"));
+ assert.match(refinement,/\.agenda-sheet \.sheet-time,\.agenda-sheet \.sheet-cell\{min-height:56px\}/);
+ assert.match(refinement,/\.agenda-sheet \.pinned-all-day\{top:42px;min-height:72px\}/);
+ assert.match(refinement,/\.sheet-cell\.pinned-all-day \.sheet-event\{min-height:60px/);
+ assert.match(refinement,/segment-flight-start,\n\.flight-duration-segment\.segment-flight-end\{z-index:6;overflow:visible\}/);
+ assert.match(refinement,/flight-arrival-log\{position:absolute/);
 });
