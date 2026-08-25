@@ -8,7 +8,8 @@ test("expense upload UI no longer offers a second flight or stay intake",async()
  const source=await read("app/ExpenseWizardLive.tsx");
  assert.match(source,/const expenseUploadTypes=\["自動辨識","收據／發票","刷卡單","信用卡帳單","交通票券"\]/);
  assert.doesNotMatch(source,/expenseUploadTypes=.*"機票"|expenseUploadTypes=.*"住宿"/);
- assert.match(source,/行程 → 我的行前資料/);
+ assert.match(source,/行前準備 → 我的行前資料/);
+ assert.doesNotMatch(source,/行程 → 我的行前資料/);
  assert.match(source,/body\.append\("uploadContext","expense"\)/);
  assert.match(source,/className="expense-upload-type"/);
  assert.match(source,/className="expense-upload-main"/);

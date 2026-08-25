@@ -90,10 +90,11 @@ test("primary shell exposes one consistent trip workspace IA and adaptive workbe
  ]);
  assert.match(page,/aria-label="Trip workspace"/);
  assert.match(page,/<i>⌂<\/i>全部出差/);
- assert.match(page,/<i>1<\/i>總覽/);
- assert.match(page,/<i>2<\/i>行程/);
- assert.match(page,/<i>3<\/i>行前準備/);
- assert.match(page,/<i>4<\/i>我的報支/);
+ assert.match(page,/<i>◎<\/i>總覽/);
+ assert.match(page,/<i>▤<\/i>行程/);
+ assert.match(page,/<i>✓<\/i>行前準備/);
+ assert.match(page,/<i>\$<\/i>我的報支/);
+ assert.doesNotMatch(page,/<i>[1-4]<\/i>(總覽|行程|行前準備|我的報支)/);
  assert.match(page,/aria-label="手機工作區"/);
  assert.match(styles,/--app-max:1440px/);
  assert.match(styles,/--aside-width:288px/);

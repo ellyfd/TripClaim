@@ -22,16 +22,16 @@ export default function TripOverview({tripId,onNavigate}:{tripId:string;onNaviga
  const nextStage:WorkspaceStage=prepDone<prepTotal?"preparation":agendaCount===0?"itinerary":"expense";
  const nextLabel=nextStage==="preparation"?"補齊行前資料":nextStage==="itinerary"?"安排行程":"整理我的報支";
  return <main className="trip-overview-page">
-  <header className="trip-overview-hero"><div><span>Trip Overview</span><h1>{summary?.trip?.name??"出差總覽"}</h1><p>{destinationLabel}・{dateLabel(summary?.trip?.startsOn)} → {dateLabel(summary?.trip?.endsOn)}</p></div><button onClick={()=>onNavigate(nextStage)}>下一步：{nextLabel} →</button></header>
+  <header className="trip-overview-hero"><div><span>出差總覽</span><h1>{summary?.trip?.name??"出差總覽"}</h1><p>{destinationLabel}・{dateLabel(summary?.trip?.startsOn)} → {dateLabel(summary?.trip?.endsOn)}</p></div><button onClick={()=>onNavigate(nextStage)}>下一步：{nextLabel} →</button></header>
   <p className="overview-sync" role="status" aria-live="polite">{status}</p>
   <section className="overview-status-grid" aria-label="出差工作區狀態">
-   <article className="overview-card preparation"><span>我的行前準備</span><strong>{prepDone}/{prepTotal}</strong><p>{prepDone===prepTotal?"行前資料已齊全":"機票、住宿、待辦與補休集中在這裡"}</p><button onClick={()=>onNavigate("preparation")}>{prepDone===prepTotal?"查看行前資料":"繼續準備"}</button></article>
-   <article className="overview-card itinerary"><span>共同行程</span><strong>{agendaCount}</strong><p>{agendaCount?`已有 ${agendaCount} 筆共同行程・${bookingCount} 個 booking projection`:"還沒有共同行程"}</p><button onClick={()=>onNavigate("itinerary")}>{agendaCount?"查看／編輯行程":"開始安排行程"}</button></article>
+   <article className="overview-card preparation"><span>行前準備</span><strong>{prepDone}/{prepTotal}</strong><p>{prepDone===prepTotal?"我的行前資料已齊全":"機票、住宿、待辦與補休都在這裡完成"}</p><button onClick={()=>onNavigate("preparation")}>{prepDone===prepTotal?"查看行前準備":"繼續準備"}</button></article>
+   <article className="overview-card itinerary"><span>行程</span><strong>{agendaCount}</strong><p>{agendaCount?`已有 ${agendaCount} 筆共同行程${bookingCount?`・其中 ${bookingCount} 筆來自機票／住宿同步`:""}`:"還沒有共同行程"}</p><button onClick={()=>onNavigate("itinerary")}>{agendaCount?"查看／編輯行程":"開始安排行程"}</button></article>
    <article className="overview-card claim"><span>我的報支</span><strong>{unresolved}</strong><p>{unresolved?`${unresolved} 項待確認／缺件需要處理`:"目前沒有待處理缺件"}</p><button onClick={()=>onNavigate("expense")}>{unresolved?"處理我的報支":"查看我的報支"}</button></article>
   </section>
   <section className="overview-detail-grid">
-   <article className="panel overview-next"><span>下一個行程</span>{nextAgenda?<><h2>{nextAgenda.title}</h2><p>{nextAgenda.startsAt.replace("T"," ")}・{nextAgenda.type}</p><button onClick={()=>onNavigate("itinerary")}>打開行程</button></>:<><h2>尚未安排行程</h2><p>先把共同行程排進日曆，同行者就能共用同一份版本。</p><button onClick={()=>onNavigate("itinerary")}>新增第一筆行程</button></>}</article>
-   <article className="panel overview-ownership"><span>這裡只看狀態，不複製資料</span><h2>Shared 與 Personal 分開</h2><p>行程與同行者 booking 屬於共用工作區；機票／住宿、待辦、補休與報支則保留個人 ownership。</p><small>{summary?.members?.length??0} 位同行者・來源資料仍由原 Booking / Document / Expense 管理。</small></article>
+   <article className="panel overview-next"><span>下一個行程</span>{nextAgenda?<><h2>{nextAgenda.title}</h2><p>{nextAgenda.startsAt.replace("T"," ")}・{nextAgenda.type}</p><button onClick={()=>onNavigate("itinerary")}>打開行程</button></>:<><h2>尚未安排行程</h2><p>先把共同行程排進日曆，同行者就能看到同一份最新版本。</p><button onClick={()=>onNavigate("itinerary")}>新增第一筆行程</button></>}</article>
+   <article className="panel overview-ownership"><span>共用與個人資料分開</span><h2>同行者只看到需要共用的內容</h2><p>行程與同步後的機票／住宿時間會讓同行者看見；原始附件、補休與個人報支仍只在自己的工作區處理。</p><small>{summary?.members?.length??0} 位同行者・總覽只整理狀態，不另外複製一份資料。</small></article>
   </section>
  </main>;
 }
