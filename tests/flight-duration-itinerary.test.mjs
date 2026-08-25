@@ -33,14 +33,16 @@ test("flight segments preserve exact departure and arrival cells across midnight
  assert.ok(segments.get("2026-11-07|05:00")?.some(x=>x.item.id==="back"));
 });
 
-test("UI keeps the calendar at 24 hours and renders synced flights as travel bands",async()=>{
+test("UI exposes one fixed 24-hour calendar mode and renders synced flights as travel bands",async()=>{
  const [sheet,itinerary,css]=await Promise.all([read("app/AgendaSheet.tsx"),read("app/ItineraryWizardLive.tsx"),read("app/styles/audit-fixes.css")]);
  assert.match(itinerary,/calendarDatesForAgenda\(x\.trip\.startsOn,x\.trip\.endsOn,agenda\)/);
  assert.match(sheet,/const showFullDay=true/);
  assert.match(sheet,/hourRows\(showFullDay\?0:8,showFullDay\?23:22\)/);
- assert.doesNotMatch(sheet,/setShowFullDay/);
- assert.doesNotMatch(sheet,/只看 08–22|完整 24 小時\$\{|跨夜航班・完整 24 小時/);
- assert.match(sheet,/固定顯示 00:00–23:00/);
+ assert.doesNotMatch(sheet,/setShowFullDay|setDensity/);
+ assert.doesNotMatch(sheet,/全天總覽|舒適編輯|只看 08–22|完整 24 小時\$\{|跨夜航班・完整 24 小時/);
+ assert.match(sheet,/>完整 24 小時<\/button>/);
+ assert.match(sheet,/fixed 24|固定顯示 00:00–23:00/);
+ assert.match(sheet,/className="agenda-sheet density-overview"/);
  assert.match(sheet,/if\(isSyncedFlight\(row\)\)continue/);
  assert.match(sheet,/buildFlightSegments\(visibleDates,rows\)/);
  assert.match(sheet,/flight-duration-segment/);
