@@ -46,7 +46,7 @@ export default function Home(){
 
  return <main>
   {appHeader}{tripContext}
-  {stage==="create"&&<CreateTripForm onCreate={trip=>openTrip(trip,"overview")} onExpense={trip=>openTrip(trip,"expense")}/>} 
+  {stage==="create"&&<CreateTripForm onCreate={trip=>openTrip(trip,"overview")}/>} 
   {stage==="overview"&&activeTrip&&<TripOverview key={`overview-${activeTrip.id}`} tripId={activeTrip.id} onNavigate={navigate}/>} 
   {stage==="itinerary"&&activeTrip&&<ItineraryWizard key={`itinerary-${activeTrip.id}`} tripId={activeTrip.id}/>} 
   {stage==="preparation"&&activeTrip&&<TripPreparation key={`preparation-${activeTrip.id}`} tripId={activeTrip.id}/>} 
