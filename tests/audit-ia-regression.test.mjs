@@ -20,7 +20,7 @@ test("expense intake uses one upload entry with optional type preselection",asyn
 test("trip workspace promotes overview and uses the same non-linear IA on desktop and mobile",async()=>{
  const page=await read("app/page.tsx");
  assert.match(page,/type Stage="create"\|"overview"\|"itinerary"\|"preparation"\|"expense"/);
- assert.match(page,/target:"overview"/);
+ assert.match(page,/target:TripStage="overview"/);
  assert.match(page,/aria-label="Trip workspace"/);
  assert.match(page,/<i>◎<\/i>總覽/);
  assert.match(page,/<i>▤<\/i>行程/);
@@ -61,12 +61,18 @@ test("trip overview aggregates status without leaking implementation terminology
  assert.doesNotMatch(source,/Trip Overview|booking projection|Booking \/ Document \/ Expense/);
 });
 
-test("trip list and create completion open the trip instead of bypassing overview",async()=>{
- const source=await read("app/CreateTripWizardLive.tsx");
- assert.match(source,/target:"overview"\|"expense"/);
- assert.match(source,/openTrip\(t,"overview"\).*開啟出差/);
+test("trip list has one primary entry and always opens overview",async()=>{
+ const [source,page]=await Promise.all([read("app/CreateTripWizardLive.tsx"),read("app/page.tsx")]);
+ assert.match(source,/function CreateTripWizardLive\(\{onCreate\}:\{onCreate:/);
+ assert.doesNotMatch(source,/onExpense/);
+ assert.match(source,/const openTrip=\(trip:Trip\)=>onCreate/);
+ assert.match(source,/onClick=\{\(\)=>openTrip\(t\)\}>開啟出差/);
+ assert.doesNotMatch(source,/className="claim"|>我的報支<\/button>/);
+ assert.match(source,/先看總覽/);
  assert.match(source,/建立後先看出差總覽/);
  assert.match(source,/建立並開啟出差/);
+ assert.match(page,/<CreateTripForm onCreate=\{trip=>openTrip\(trip,"overview"\)\}\/?>/);
+ assert.doesNotMatch(page,/onExpense=/);
 });
 
 test("flight and stay booking guidance are domain-specific",async()=>{
