@@ -1,7 +1,6 @@
 "use client";
 
-import {useMemo,useRef,useState} from "react";
-import {validateDestinationMaster} from "./master-data-validation";
+import {useMemo,useState} from "react";
 import {buildFlightSegments,isSyncedFlight} from "./agenda-flight-layout.js";
 import {flightTiming,formatDurationMinutes,formatTimezoneDifference,formatUtcOffset,utcOffsetMinutes} from "./timezone-utils";
 
@@ -23,7 +22,7 @@ const flightMeta=(item:SheetAgenda)=>{
 };
 
 export default function AgendaSheet({dates,rows,onAdd,onEdit,onDelete}:{dates:string[];rows:SheetAgenda[];onAdd:(date:string,time:string)=>void;onEdit:(row:SheetAgenda)=>void;onDelete:(row:SheetAgenda)=>void}){
- const [selectedDayIndex,setSelectedDayIndex]=useState<number|null>(null),[importMessage,setImportMessage]=useState(""),[scrolledX,setScrolledX]=useState(false);const fileRef=useRef<HTMLInputElement>(null),imageRef=useRef<HTMLInputElement>(null);
+ const [selectedDayIndex,setSelectedDayIndex]=useState<number|null>(null),[scrolledX,setScrolledX]=useState(false);
  const visibleDates=dates;
  const todayIndex=visibleDates.indexOf(new Date().toISOString().slice(0,10)),dayIndex=visibleDates.length?Math.min(selectedDayIndex??(todayIndex>=0?todayIndex:0),visibleDates.length-1):0;
  const windowStart=Math.floor(dayIndex/renderedDayLimit)*renderedDayLimit,renderDates=visibleDates.slice(windowStart,windowStart+renderedDayLimit),hasPreviousWindow=windowStart>0,hasNextWindow=windowStart+renderedDayLimit<visibleDates.length;
@@ -31,16 +30,13 @@ export default function AgendaSheet({dates,rows,onAdd,onEdit,onDelete}:{dates:st
  const flightSegmentsByCell=useMemo(()=>buildFlightSegments(visibleDates,rows),[visibleDates,rows]);
  const byCell=useMemo(()=>{const map=new Map<string,SheetAgenda[]>();for(const row of rows){if(isSyncedFlight(row))continue;const key=`${row.startsAt.slice(0,10)}|${cellKey(row)}`,list=map.get(key)??[];list.push(row);map.set(key,list)}return map},[rows]);
  const jumpWindow=(direction:-1|1)=>{const target=Math.max(0,Math.min(visibleDates.length-1,windowStart+direction*renderedDayLimit));setSelectedDayIndex(target);setScrolledX(false)};
- const importFile=async(file?:File)=>{if(!file)return;const ext=file.name.split(".").pop()?.toLowerCase();if(ext!=="csv"){setImportMessage(`已接收 ${file.name}；將先轉成欄位預覽，再用公司主檔驗證後匯入。`);return}const lines=(await file.text()).split(/\r?\n/).filter(Boolean),headers=(lines.shift()??"").split(",").map(x=>x.trim().replace(/^"|"$/g,"")),rows=lines.map(line=>Object.fromEntries(line.split(",").map((value,index)=>[headers[index],value.trim().replace(/^"|"$/g,"")])));const locationRows=rows.filter(row=>row.countryCode||row.countryName||row.cityName),invalid=locationRows.filter(row=>!validateDestinationMaster({countryCode:row.countryCode,countryName:row.countryName,cityName:row.cityName}).valid);setImportMessage(invalid.length?`已讀取 ${rows.length} 列；${invalid.length} 列地點無法對應公司主檔，將進例外清單，不會直接匯入。`:`已讀取 ${rows.length} 列；主檔驗證通過，下一步預覽後再加入行程。`)};
- const imageFile=(file?:File)=>{if(!file)return;setImportMessage(`已接收 ${file.name}；截圖／PDF會先轉成表格預覽，低信心欄位需人工確認。`)};
  if(!visibleDates.length)return <section className="agenda-sheet-wrap"><div className="panel" role="status" aria-live="polite"><b>正在載入這趟出差的行程</b><p>取得正確的出差日期前，不顯示其他旅程或預設日期。</p></div></section>;
  return <section className="agenda-sheet-wrap">
   <div className="agenda-sheet-toolbar">
    <div><b><span className="desktop-agenda-title">共同行程表</span><span className="mobile-agenda-title">今日行程</span></b><span>固定顯示 00:00–23:00；一般活動可直接編輯，機票／住宿由原始訂單同步</span></div>
-   <div className="agenda-toolbar-actions"><span className="agenda-view-status" role="status" aria-label="顯示範圍">完整 24 小時</span><button onClick={()=>fileRef.current?.click()}>↑ 匯入 Excel／CSV</button><button onClick={()=>imageRef.current?.click()}>▧ 讀取截圖／PDF</button><input ref={fileRef} hidden type="file" accept=".xlsx,.xls,.csv" onChange={e=>importFile(e.target.files?.[0])}/><input ref={imageRef} hidden type="file" accept="image/*,.pdf" onChange={e=>imageFile(e.target.files?.[0])}/></div>
+   <div className="agenda-toolbar-actions"><span className="agenda-view-status" role="status" aria-label="顯示範圍">完整 24 小時</span></div>
   </div>
   {visibleDates.length>renderedDayLimit&&<div className="agenda-window-nav" aria-label="長行程日期區段"><button disabled={!hasPreviousWindow} onClick={()=>jumpWindow(-1)}>← 前 7 天</button><span>顯示第 {windowStart+1}–{windowStart+renderDates.length} 天，共 {visibleDates.length} 天</span><button disabled={!hasNextWindow} onClick={()=>jumpWindow(1)}>後 7 天 →</button></div>}
-  {importMessage&&<div className="agenda-import-message"><span>{importMessage}</span><button onClick={()=>setImportMessage("")}>關閉</button></div>}
   <div className="agenda-mobile-days">{visibleDates.map((d,i)=><button className={i===dayIndex?"on":""} key={d} onClick={()=>{setSelectedDayIndex(i);setScrolledX(false)}}>{dayLabel(d)}</button>)}</div>
   <div className="agenda-sheet-scrollwrap">
   {renderDates.length>4&&!scrolledX&&<span className="sheet-scroll-more" aria-hidden="true">→ 橫向捲動看此段更多天</span>}
