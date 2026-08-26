@@ -1,12 +1,43 @@
 /* Simplified trip IA: selecting a trip opens one working surface for travel data + calendar. */
 .simplified-trip-nav{align-items:center}
-.itinerary-inline-prep{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(280px,.5fr);gap:12px;align-items:start;margin:0 0 12px}
+.itinerary-inline-prep{display:block;margin:0 0 8px}
 .itinerary-inline-prep>.panel{margin:0}
-.simplified-itinerary-page .trip-todo-panel>header h2{margin-bottom:3px}
-.simplified-itinerary-page .trip-todo-panel>header p{margin:0;color:var(--muted)}
+.simplified-itinerary-page .trip-todo-panel{display:grid;grid-template-columns:minmax(220px,1fr) auto;gap:10px 16px;align-items:center;padding:12px 14px}
+.simplified-itinerary-page .trip-todo-panel>header{min-width:0}
+.simplified-itinerary-page .trip-todo-panel>header span{font-size:11px}
+.simplified-itinerary-page .trip-todo-panel>header h2{margin:1px 0 2px;font-size:18px}
+.simplified-itinerary-page .trip-todo-panel>header p{margin:0;color:var(--muted);font-size:12px}
+.simplified-itinerary-page .side-booking-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;min-width:360px}
+.simplified-itinerary-page .side-booking-actions button{min-height:48px;margin:0;padding:0 16px;font-size:14px;font-weight:850}
+.simplified-itinerary-page .todo-members{grid-column:1/-1;display:flex;gap:8px;margin:0;max-height:92px;overflow:auto}
+.simplified-itinerary-page .todo-members>section{min-width:220px;padding:7px 9px}
+.simplified-itinerary-page .todo-person{min-height:24px}
+.simplified-itinerary-page .todo-person small{display:none}
+.simplified-itinerary-page .todo-checks{display:flex;gap:5px;flex-wrap:wrap}
+.simplified-itinerary-page .todo-checks label{min-height:30px;padding:3px 7px}
+.simplified-itinerary-page .todo-checks label span{font-size:11px}
+.simplified-itinerary-page .sync-line{margin-bottom:6px!important}
+.itinerary-secondary-tools{margin-top:12px;padding:0;overflow:hidden;background:#fff}
+.itinerary-secondary-tools>summary{min-height:48px;display:flex;align-items:center;padding:0 14px;cursor:pointer;color:var(--green);font-weight:850;list-style:none}
+.itinerary-secondary-tools>summary::-webkit-details-marker{display:none}
+.itinerary-secondary-tools>summary::after{content:"展開";margin-left:auto;color:var(--muted);font-size:12px;font-weight:700}
+.itinerary-secondary-tools[open]>summary::after{content:"收合"}
+.itinerary-secondary-grid{display:grid;grid-template-columns:minmax(280px,.4fr) minmax(0,1.6fr);gap:12px;padding:0 12px 12px}
+.itinerary-secondary-grid>.comp-leave,.itinerary-secondary-grid>.shared-booking-overview{margin:0}
+.itinerary-secondary-grid .shared-booking-overview{min-width:0}
 
 @media(max-width:800px){
  .workspace-mobile-nav.simplified-trip-nav{grid-template-columns:repeat(3,minmax(0,1fr))!important}
- .itinerary-inline-prep{grid-template-columns:1fr;gap:8px;margin-bottom:10px}
- .simplified-itinerary-page .trip-todo-panel,.simplified-itinerary-page .comp-leave{width:100%}
+ .itinerary-inline-prep{margin-bottom:7px}
+ .simplified-itinerary-page .trip-todo-panel{grid-template-columns:1fr;gap:8px;padding:10px}
+ .simplified-itinerary-page .trip-todo-panel>header p{display:none}
+ .simplified-itinerary-page .side-booking-actions{min-width:0;width:100%;grid-template-columns:1fr 1fr}
+ .simplified-itinerary-page .side-booking-actions button{min-height:50px;padding:0 8px;font-size:13px}
+ .simplified-itinerary-page .todo-members{max-height:70px;gap:6px}
+ .simplified-itinerary-page .todo-members>section{min-width:100%;padding:6px 7px}
+ .simplified-itinerary-page .todo-members>section:not(.mine){display:none}
+ .simplified-itinerary-page .todo-person{display:none}
+ .simplified-itinerary-page .todo-checks{flex-wrap:nowrap;overflow-x:auto}
+ .simplified-itinerary-page .todo-checks label{flex:0 0 auto}
+ .itinerary-secondary-grid{grid-template-columns:1fr;padding:0 8px 8px}
 }

@@ -15,13 +15,15 @@ test("selecting or creating a trip opens the working itinerary directly",async()
 
 test("travel input and its visible calendar result share one workspace",async()=>{
  const source=await read("app/ItineraryWizardLive.tsx");
- assert.match(source,/className="itinerary-inline-prep"/);
+ assert.match(source,/className="itinerary-inline-prep itinerary-primary-intake"/);
  assert.match(source,/<TripTodoPanel/);
  assert.match(source,/<CompLeavePanel/);
  assert.match(source,/<AgendaSheet/);
- assert.match(source,/確認後會直接出現在下面行事曆/);
+ assert.match(source,/上傳機票／住宿後會直接排進行事曆/);
  assert.match(source,/tripclaim:data-changed/);
  assert.doesNotMatch(source,/請到「行前準備」/);
+ const intake=source.indexOf("itinerary-primary-intake"),calendar=source.indexOf("<AgendaSheet"),secondary=source.indexOf("itinerary-secondary-tools");
+ assert.ok(intake>=0&&calendar>intake&&secondary>calendar);
 });
 
 test("agenda toolbar exposes only working controls and does not advertise unfinished bulk import",async()=>{
