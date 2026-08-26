@@ -9,6 +9,8 @@ import {masterDataExceptions,personalExpenses,travelBookings,uploadedDocuments} 
 import {MASTER_DATA_VERSION} from "../../../managed-config";
 import {validateExpenseMaster} from "../../../master-data-validation";
 
+const isTravelDocument=(documentType?:string|null)=>Boolean(documentType&&(documentType==="flight"||documentType==="stay"||documentType.includes("機票")||documentType.includes("住宿")));
+
 export async function GET(request:NextRequest,{params}:{params:Promise<{id:string}>}){
  const user=await getChatGPTUser();if(!user)return NextResponse.json({error:"authentication_required"},{status:401});
  const {id}=await params,db=await getDb();const [doc]=await db.select().from(uploadedDocuments).where(and(eq(uploadedDocuments.id,id),eq(uploadedDocuments.ownerEmail,user.email),isNull(uploadedDocuments.deletedAt))).limit(1);
@@ -57,7 +59,6 @@ export async function DELETE(request:NextRequest,{params}:{params:Promise<{id:st
    db.select({id:personalExpenses.id}).from(personalExpenses).where(and(eq(personalExpenses.sourceDocumentId,id),eq(personalExpenses.tripId,doc.tripId),eq(personalExpenses.ownerEmail,user.email))).limit(1),
   ]);
   if(booking||expense||doc.confirmedAt)return NextResponse.json({error:"discard_not_allowed",message:"此文件已被正式資料使用，不能以草稿方式刪除"},{status:409});
-  // Drafts are unlinked, so prefer storage-first deletion: if R2 fails, keep the DB row/object key so the user can retry safely.
   const objectCleanup=await deleteObjectKeysWithRetry([doc.objectKey]);
   if(objectCleanup.objectDeleteFailures){
    await recordAudit({tripId:doc.tripId,actorEmail:user.email,entityType:"uploaded_document",entityId:id,action:"discard_storage_cleanup_failed",before:{originalName:doc.originalName,documentType:doc.documentType,status:doc.status},after:{objectDeleteFailures:objectCleanup.objectDeleteFailures,attemptsUsed:objectCleanup.attemptsUsed}});
@@ -70,7 +71,17 @@ export async function DELETE(request:NextRequest,{params}:{params:Promise<{id:st
   await recordAudit({tripId:doc.tripId,actorEmail:user.email,entityType:"uploaded_document",entityId:id,action:"discard_unlinked_upload",before:{originalName:doc.originalName,documentType:doc.documentType,status:doc.status,contentHash:doc.contentHash},after:{objectDeleted:true,attemptsUsed:objectCleanup.attemptsUsed}});
   return NextResponse.json({discarded:true,exact:true,objectDeleted:true,objectDeleteAttempts:objectCleanup.attemptsUsed});
  }
- const deleted=await hardDeleteOrderGraph({tripId:doc.tripId,ownerEmail:user.email,documentId:id});
- await recordAudit({tripId:doc.tripId,actorEmail:user.email,entityType:"uploaded_document",entityId:id,action:"hard_delete_order_graph",before:{originalName:doc.originalName,documentType:doc.documentType,status:doc.status},after:{bookingIds:deleted.bookingIds,documentIds:deleted.documentIds,duplicateDocumentsDeleted:deleted.duplicateDocumentsDeleted,objectDeleted:deleted.objectDeleted,objectDeleteFailures:deleted.objectDeleteFailures,objectDeleteAttempts:deleted.objectDeleteAttempts}});
- return NextResponse.json({deleted:true,permanent:true,bookingsDeleted:deleted.bookingIds.length,documentDeleted:true,documentsDeleted:deleted.documentIds.length,duplicateDocumentsDeleted:deleted.duplicateDocumentsDeleted,objectDeleted:deleted.objectDeleted,objectDeleteFailures:deleted.objectDeleteFailures,objectDeleteAttempts:deleted.objectDeleteAttempts,cleanupPending:deleted.objectDeleteFailures>0});
+ const [linkedBooking]=await db.select({id:travelBookings.id}).from(travelBookings).where(and(eq(travelBookings.documentId,id),eq(travelBookings.tripId,doc.tripId),eq(travelBookings.ownerEmail,user.email),isNull(travelBookings.deletedAt))).limit(1);
+ if(isTravelDocument(doc.documentType)||linkedBooking){
+  const deleted=await hardDeleteOrderGraph({tripId:doc.tripId,ownerEmail:user.email,bookingId:linkedBooking?.id,documentId:id});
+  await recordAudit({tripId:doc.tripId,actorEmail:user.email,entityType:"uploaded_document",entityId:id,action:"hard_delete_order_graph",before:{originalName:doc.originalName,documentType:doc.documentType,status:doc.status},after:{bookingIds:deleted.bookingIds,documentIds:deleted.documentIds,duplicateDocumentsDeleted:deleted.duplicateDocumentsDeleted,objectDeleted:deleted.objectDeleted,objectDeleteFailures:deleted.objectDeleteFailures,objectDeleteAttempts:deleted.objectDeleteAttempts}});
+  return NextResponse.json({deleted:true,permanent:true,travel:true,bookingsDeleted:deleted.bookingIds.length,documentDeleted:true,documentsDeleted:deleted.documentIds.length,duplicateDocumentsDeleted:deleted.duplicateDocumentsDeleted,objectDeleted:deleted.objectDeleted,objectDeleteFailures:deleted.objectDeleteFailures,objectDeleteAttempts:deleted.objectDeleteAttempts,cleanupPending:deleted.objectDeleteFailures>0});
+ }
+ if(doc.deletedAt)return NextResponse.json({deleted:true,recoverable:true,undo:{kind:"document",id}});
+ const now=new Date().toISOString();await db.batch([
+  db.update(uploadedDocuments).set({deletedAt:now,updatedAt:now}).where(and(eq(uploadedDocuments.id,id),eq(uploadedDocuments.ownerEmail,user.email),eq(uploadedDocuments.tripId,doc.tripId))),
+  db.update(personalExpenses).set({deletedAt:now,updatedAt:now}).where(and(eq(personalExpenses.sourceDocumentId,id),eq(personalExpenses.ownerEmail,user.email),eq(personalExpenses.tripId,doc.tripId))),
+ ]);
+ await recordAudit({tripId:doc.tripId,actorEmail:user.email,entityType:"uploaded_document",entityId:id,action:"soft_delete_graph",before:{originalName:doc.originalName,documentType:doc.documentType,status:doc.status},after:{deletedAt:now,recoverable:true}});
+ return NextResponse.json({deleted:true,recoverable:true,travel:false,undo:{kind:"document",id}});
 }
