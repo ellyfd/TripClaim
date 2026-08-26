@@ -1,6 +1,6 @@
 # TripClaim 執行優化規劃書
 
-最後更新：2026-08-25  
+最後更新：2026-08-26  
 決策角色：CPO、CTO、IA、UIUX、財務流程  
 產品主流程：建立出差 → 出差總覽 → 行程／行前準備／我的報支
 
@@ -11,12 +11,13 @@
 3. Shared itinerary 與 Personal preparation 分離：行程只處理共同行程與 shared booking projection；本人機票／住宿、待辦與補休在「行前準備」。
 4. 桌機負責規劃、核對、批次整理與匯出；手機使用同一 IA，改以單日行程與任務優先呈現，不另造第二套導覽心智模型。
 5. 報支項目、報支幣別、國家、城市與機場是公司固定主檔。任何真人角色都不得新增、修改或刪除。
-6. 固定主檔驗證必須同時存在於 UI、API、OCR、匯入、背景工作與資料庫層。
+6. 固定主檔驗證必須同時存在於 UI、API、OCR、匯入、背景工作與資料庫層；尚未具備完整 Preview → Confirm → Write lifecycle 的匯入功能不得暴露成 production CTA。
 7. 原始交易資料不可被申報資料覆蓋。非白名單幣別須保留原始幣別與金額，並提醒只能以 TWD 申報。
 8. 同一報支項目若申報幣別不同，彙總、Excel 與 ZIP 必須分行、分組。
 9. 同行者可共編 shared itinerary，但每個人的信用卡、文件、報支與缺件狀態維持私有；他人未完成不得阻擋本人。
 10. 機票與住宿是 travel order，不是彼此獨立的卡片。正式 travel order 必須以「整張 source-order graph」建立、取代與刪除；任何單一航段不得自行脫離訂單生命週期。
 11. 跨時區航班不得使用「整趟 Trip 一個 timezone」或單一 booking timezone 當真相；departure / arrival 各自保存當地時間 + IANA timezone，UTC 只作絕對時間、duration 與 audit。
+12. 使用者看得到的可修改狀態必須有 server persistence；不得以 React/local-only state 偽裝成已保存資料。
 
 ## 二、生命週期入口
 
@@ -50,7 +51,7 @@
 - [x] 費用加入 originalCurrency、originalAmount、reportingCurrency、reportingAmount。
 - [x] 保存匯率、匯率來源、轉換原因與人工確認狀態。
 - [x] 未知幣別不再靜默覆蓋為 TWD；保留原幣並要求 TWD 申報。
-- [x] API、OCR、Excel／CSV 匯入共用同一驗證服務。
+- [x] API、OCR、既有正式匯入 path 共用同一驗證服務；未完成的 Agenda bulk import 不暴露 production CTA。
 - [x] 舊資料無法映射時進例外清單，不自動歸類為「其他」。
 
 完成定義：非法主檔值無法寫入；原始幣別不會消失；可完整還原辨識與申報決策。
@@ -181,26 +182,42 @@ Audit 初始判定為 NO-GO；下列 code remediation 已完成：
 
 完成定義：跨時區航班同時保留兩端票面當地時間、IANA timezone 與 UTC 絕對時間；Calendar 不因夜間航班遺失資料，duration 不因時差被算錯。正式站仍須依 Final Release Gate 驗證 migration 0024 與實際 Sites behavior。
 
+### Sprint 12：UIUX / IA Consistency & Personal State Integrity（P1）
+
+- [x] PR #97：桌機 workspace navigation 移除 1/2/3/4 假線性步驟，改為與 mobile 一致的 semantic IA；移除 Trip Overview／Shared workspace／Personal workspace／booking projection 等工程語言，修正 travel intake 路徑文案。
+- [x] PR #98：全部出差列表只保留「開啟出差」單一 primary entry，固定先進總覽；移除繞過 Overview 的「我的報支」shortcut 與 dead `onExpense` path。
+- [x] PR #99：Calendar 成為 shared itinerary primary surface；同行者機票／住宿價格、航段、訂購時間與附件資訊降為預設收合的 secondary details；mobile trip-row action grid 同步收斂。
+- [x] PR #100：travel source attachment owner-only。`/bookings` 與 `/summary` 對非本人遮蔽 document ID／attachment URL；直接打 attachment endpoint 亦以 `403 attachment_owner_only` fail closed。
+- [x] PR #101：桌機只保留 top-level「全部出差」返回入口，mobile 保留 contextual back；固定「完整 24 小時」由假 pressed button 改成 semantic status badge。
+- [x] PR #102：補休 `+0.5 / -0.5` 不再是 reload 即消失的 local-only state；新增 owner-scoped server persistence、server acknowledgement、error state、`恢復自動試算` 與 travel change revalidation。
+- [x] Additive D1 migration：`0025_comp_leave_overrides.sql`；補休以 integer half-day units 保存，一趟出差＋一位使用者只有一筆 override，變更留下 audit。
+- [x] PR #103：Overview 以 source order 計數，不把來回／多航段 booking rows 誤算成多張訂單；所有已過期行程不再被冒充成「下一個行程」。
+- [x] PR #103：Overview 不再以 UTC `toISOString()` 直接比較 local wall-clock itinerary string；目前採 browser-local wall-clock key，避免明確錯誤的 UTC/local 比較。
+- [x] PR #103：Agenda toolbar 移除尚未具備 Preview → Confirm → Write lifecycle 的 Excel／CSV／截圖／PDF bulk import CTA；功能未完成前不得用 production UI 假裝可用。
+- [x] Runtime baseline `79ef033702780415753a52788ef8fd5bb6280775`（PR #103），tested head `855cbe0c070fa76c913253a97588d13e3bed139c`，CI run #140（run id `32920287123`），build + Sites artifact validation + **156/156 tests** Pass。
+
+完成定義：目前使用者可見 IA、shared/personal privacy、可修改個人狀態與 Overview aggregation 均與實際資料生命週期一致；不保留假 step、假 control、dead-end CTA、local-only save 或 raw-leg-as-order 等誤導行為。
+
 ### Final Release Gate（唯一未完成工作）
 
 目前 release baseline：
 
 - GitHub main 可包含高於 runtime 的 docs-only commit；不得因此誤認 runtime 已改變。
-- Runtime release candidate：`ced77248140b0a696ead06b3b8e26b887f6ca98c`（PR #91）。
-- Tested head：`cc39eb026583cb6b463d337541445eba7a5c08de`。
-- CI baseline：run #122（run id `32842598637`），build + Sites artifact validation + **146/146 tests** Pass。
-- D1 migration：through `0024_flight_endpoint_timezones.sql`。
+- Runtime release candidate：`79ef033702780415753a52788ef8fd5bb6280775`（PR #103）。
+- Tested head：`855cbe0c070fa76c913253a97588d13e3bed139c`。
+- CI baseline：run #140（run id `32920287123`），build + Sites artifact validation + **156/156 tests** Pass。
+- D1 migration：through `0025_comp_leave_overrides.sql`。
 - 唯一 operational tracker：GitHub Issue **#85 `Final Sites UAT & 48h release gate`**。
 - 驗收紀錄：`docs/UAT_RELEASE_RECORD.md`；裝置矩陣：`docs/DEVICE_QA.md`。
 
-- [ ] **Gate A — Sites Publish / checkpoint + authenticated destructive UAT**：發布包含上述 runtime candidate 且已套用 migration 0024 的 ChatGPT Sites 版本；依 #85 與 UAT 文件完成 Audit Critical Journey、24h Calendar、Amsterdam CI73/CI74 travel band、endpoint timezone / DST / UTC duration、travel whole-order lifecycle、同檔重傳、住宿時間、一般報支 regression、storage health、export reconciliation 與 device QA。
-- [ ] **Gate B — 48h observation + GO / NO-GO**：Gate A PASS 後才開始 T+0／T+4h／T+24h／T+48h 觀察；不得出現 persistence、cross-trip stale render、duplicate mutation、hidden flight、timezone/duration error、travel ghost／restore、privacy、storage-health 或 financial reconciliation regression。
+- [ ] **Gate A — Sites Publish / checkpoint + authenticated destructive UAT**：發布包含上述 runtime candidate 且正式 D1 已套用 migrations through 0025 的 ChatGPT Sites 版本；依 #85 與 UAT 文件完成 Audit Critical Journey、24h Calendar、Amsterdam CI73/CI74 travel band、endpoint timezone / DST / UTC duration、travel whole-order lifecycle、owner-only travel attachment、補休 persistence/reset、Overview source-order count/no-past-as-next、同檔重傳、住宿時間、一般報支 regression、storage health、export reconciliation 與 device QA；正式 Agenda toolbar 不得暴露尚未完成的 bulk import CTA。
+- [ ] **Gate B — 48h observation + GO / NO-GO**：Gate A PASS 後才開始 T+0／T+4h／T+24h／T+48h 觀察；不得出現 persistence、cross-trip stale render、duplicate mutation、hidden flight、timezone/duration error、travel ghost／restore、privacy、comp-leave state loss、dead-end CTA、storage-health 或 financial reconciliation regression。
 
 執行規則：
 
 1. Final Release Gate 的 checkbox 只在 Issue #85 與 `docs/UAT_RELEASE_RECORD.md` 記錄實際證據；已完成 Sprint 不再建立重複 release checklist。
 2. GitHub merge、CI 全綠或 Sites artifact validation 都不等於 production Sites 已驗收。
-3. **Migration 0024 是 #91 runtime 的硬性前置條件**；若正式環境出現 `no such column: departure_timezone`／`arrival_timezone`，立即 NO-GO，不得用 fallback 隱藏 migration 缺失。
+3. **Migration 0024 與 0025 都是 #103 runtime 的硬性前置條件**：0024 缺失時 timezone canonical fields 不完整；0025 缺失時補休 override 無法持久化。任一缺失立即 NO-GO，不得用 fallback 或 local state 隱藏 migration 缺失。
 4. Gate A 若發現 runtime defect，停止 Gate，建立獨立 fix branch／PR 與 regression coverage；完整 CI 通過、重新發布 Sites 後，從受影響 destructive flow 重新開始 Gate A。
 5. Gate A 未 PASS 不得開始 48h observation；Gate B 未 PASS 不得標記 GO。
 
@@ -222,35 +239,37 @@ Audit 初始判定為 NO-GO；下列 code remediation 已完成：
 12. Flight `startAt` / `endAt` 是兩端票面 local datetime；不得把其中一端強制轉成另一端 timezone 後覆蓋原值。
 13. Flight canonical timezone identity 是 IANA timezone；`UTC+N` 只能做顯示／audit，不得當 DST-safe canonical timezone。
 14. 真實飛行時間只能由 `arrivalUtcAt - departureUtcAt` 計算；跨時區 travel band 的視覺高度不得被解讀為 elapsed duration。
+15. Travel source attachment 維持 owner-only；shared booking projection 可以共享必要行程／訂單比較資訊，但不得把他人的 source document ID 或附件下載權限一起共享。
 
 ## 四、最終桌機與手機 IA
 
 ### 桌機
 
-- 全部出差：出差列表、建立出差；主要 CTA「開啟出差」。
-- 總覽：進度、下一步、缺件、下一個行程；只讀 aggregation。
-- 行程：shared calendar + shared bookings；Calendar 固定 24h；flight band 顯示兩端當地時間／offset／真實 duration。
-- 行前準備：本人 flights & stays、checklist、comp time；flight endpoint timezone 在此確認。
+- 全部出差：出差列表、建立出差；每趟只有主要 CTA「開啟出差」，先進總覽。
+- 總覽：進度、下一步、缺件、下一個行程；只讀 aggregation；travel 數量以 source order 為單位，不以航段 row 數計算。
+- 行程：shared calendar 為 primary；同行者機票／住宿訂單明細為預設收合 secondary disclosure；Calendar 固定 24h；flight band 顯示兩端當地時間／offset／真實 duration。
+- 行前準備：本人 flights & stays、checklist、server-persisted comp time；可查看同行者 readiness，但不得查看他人 source attachment／個人報支；flight endpoint timezone 在此確認。
 - 我的報支：expenses、documents inbox、cards & statements、review & export。
 
 ### 手機
 
 - 固定 Bottom Navigation：出差、總覽、行程、準備、報支。
 - 行程頁：日期切換、全天／住宿、單日 24h 時間軸，不顯示縮小版大型 Excel。
-- 行前準備：本人 travel intake／待辦／補休。
+- 行前準備：本人 travel intake／待辦／補休；人工補休 override 必須 reload 後仍存在。
 - 我的報支：一般費用 upload、最近上傳、待確認、缺件與今日費用。
 - 不再用 mobile-only 中央「＋上傳」改變 ownership；上傳回到各自 workspace。
+- Contextual「← 全部出差」只在 mobile 保留；desktop 使用 top-level workspace navigation，避免同一目的地重複入口。
 
 ## 五、驗收護欄
 
 1. 操作型點擊區至少 44×44px；data-grid cell 不因觸控規範被不必要放大。
-2. 同行者不可查看他人的卡號、帳單、收據與個人報支。
+2. 同行者不可查看他人的卡號、帳單、收據、travel source attachment 與個人報支。
 3. 他人未完成班機或住宿不得阻擋本人。
 4. 來回多航段只計一筆整張機票費用。
 5. 非白名單原幣保留，申報 TWD，且必須顯示原因。
 6. 帳單附件不重複建立消費；手續費獨立為 TWD。
 7. 報支表、明細、ZIP 與附件索引的組別、順序與金額一致。
-8. 刪除任一 travel 航段後，同 source order 的所有航段、agenda、travel expense、正式文件與可見附件一起消失。
+8. 刪除任一 travel 航段後，同 source order 的所有航段、agenda、travel expense、正式文件與本人可見附件一起消失。
 9. 刪除後重新上傳相同 travel 檔案，必須建立新的 document ID；不得載入舊 travel order。
 10. 新文件確認同步後，行程只保留新 source order 的航段／住宿，不得同時存在新舊版本。
 11. 住宿必須以 15:00 check-in 與 11:00 checkout 形成行程；其他 PDF timestamp 不得覆蓋。
@@ -268,7 +287,11 @@ Audit 初始判定為 NO-GO；下列 code remediation 已完成：
 23. 每個 flight endpoint 必須保留 local datetime + IANA timezone；無法 deterministic resolve 的 airport timezone 必須要求人工確認，不可猜。
 24. UTC conversion 必須遵守 DST；Amsterdam 2026-07 與 2026-11 的 offset 不得被固定寫死為同一值。
 25. CI73 / CI74 在 UI、booking 與 audit 中的 local time、UTC duration 與 timezone difference 必須一致。
-26. #91 runtime 上線前 D1 必須完成 migration 0024；缺欄位即 release blocker。
+26. #103 runtime 上線前 D1 必須完成 migrations through 0025；0024 或 0025 任一缺失皆為 release blocker。
+27. Shared booking projection 不得把他人的 source document ID／attachment URL 傳給 client；attachment endpoint 必須再次 owner-check，不能只靠 UI 隱藏。
+28. 補休人工調整只能在 server acknowledgement 後改變畫面；reload 必須保留；「恢復自動試算」後 reload 必須回到自動值。
+29. Overview 的 travel order count 必須按 source order 計，不得把來回／多航段 booking rows 算成多張訂單；所有行程已過期時不得把舊行程冒充「下一個行程」。
+30. Production UI 不得顯示沒有完整 Loading／Preview／Confirm／Write 或相應完成閉環的 CTA；Agenda bulk import 完成前不得重新露出 Excel／CSV／截圖／PDF入口。
 
 ## 六、北極星指標
 
