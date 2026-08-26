@@ -16,7 +16,7 @@ test("company master data has a versioned D1 schema and additive migration",asyn
  assert.match(schema,/company_destinations/);
  assert.match(migration,/company_destinations_version_value_unique/);
  assert.match(service,/getCompanyMasterCatalog/);
- assert.match(service,/validateCompanyDestination/);
+ assert.match(service,/validateDestinationMaster/);
  assert.match(service,/validateCompanyExpenseMaster/);
  assert.match(service,/onConflictDoNothing/);
 });
@@ -33,9 +33,11 @@ test("trip destination UI and write APIs use the same database master catalog",a
  assert.match(wizard,/destinationOptions/);
  assert.match(wizard,/masterVersion/);
  assert.match(masterApi,/getCompanyMasterCatalog/);
- assert.match(trips,/validateCompanyDestination/);
+ for(const source of [trips,trip]){
+  assert.match(source,/validateDestinationMaster/);
+  assert.match(source,/MASTER_DATA_VERSION/);
+  assert.doesNotMatch(source,/master-data-validation/);
+ }
  assert.match(trips,/await Promise\.all/);
- assert.doesNotMatch(trips,/validateDestinationMaster/);
- assert.match(trip,/validateCompanyDestination/);
- assert.doesNotMatch(trip,/validateDestinationMaster/);
+ assert.match(trip,/await Promise\.all/);
 });
