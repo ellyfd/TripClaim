@@ -4,6 +4,7 @@ import {getChatGPTUser} from "../../../chatgpt-auth";
 import {getDb} from "../../../../db";
 import {recordAudit,requireTripMember} from "../../../../db/access";
 import {hardDeleteOrderGraph} from "../../../../db/order-graph";
+import {softDeleteOrdinaryDocument} from "../../../../db/ordinary-document-deletion";
 import {deleteObjectKeysWithRetry} from "../../../../db/object-storage";
 import {masterDataExceptions,personalExpenses,travelBookings,uploadedDocuments} from "../../../../db/schema";
 import {MASTER_DATA_VERSION} from "../../../managed-config";
@@ -78,12 +79,5 @@ export async function DELETE(request:NextRequest,{params}:{params:Promise<{id:st
   await recordAudit({tripId:doc.tripId,actorEmail:user.email,entityType:"uploaded_document",entityId:id,action:"hard_delete_order_graph",before:{originalName:doc.originalName,documentType:doc.documentType,status:doc.status},after:{bookingIds:deleted.bookingIds,documentIds:deleted.documentIds,duplicateDocumentsDeleted:deleted.duplicateDocumentsDeleted,objectDeleted:deleted.objectDeleted,objectDeleteFailures:deleted.objectDeleteFailures,objectDeleteAttempts:deleted.objectDeleteAttempts}});
   return NextResponse.json({deleted:true,permanent:true,travel:true,bookingsDeleted:deleted.bookingIds.length,documentDeleted:true,documentsDeleted:deleted.documentIds.length,duplicateDocumentsDeleted:deleted.duplicateDocumentsDeleted,objectDeleted:deleted.objectDeleted,objectDeleteFailures:deleted.objectDeleteFailures,objectDeleteAttempts:deleted.objectDeleteAttempts,cleanupPending:deleted.objectDeleteFailures>0});
  }
- if(doc.deletedAt)return NextResponse.json({deleted:true,recoverable:true,travel:false,undo:{kind:"document",id}});
- const now=new Date().toISOString();
- await db.batch([
-  db.update(uploadedDocuments).set({deletedAt:now,updatedAt:now}).where(and(eq(uploadedDocuments.id,id),eq(uploadedDocuments.ownerEmail,user.email),eq(uploadedDocuments.tripId,doc.tripId))),
-  db.update(personalExpenses).set({deletedAt:now,updatedAt:now}).where(and(eq(personalExpenses.sourceDocumentId,id),eq(personalExpenses.ownerEmail,user.email),eq(personalExpenses.tripId,doc.tripId))),
- ]);
- await recordAudit({tripId:doc.tripId,actorEmail:user.email,entityType:"uploaded_document",entityId:id,action:"soft_delete_graph",before:{originalName:doc.originalName,documentType:doc.documentType,status:doc.status},after:{deletedAt:now,recoverable:true}});
- return NextResponse.json({deleted:true,recoverable:true,travel:false,undo:{kind:"document",id}});
+ return NextResponse.json(await softDeleteOrdinaryDocument(doc,user.email));
 }
