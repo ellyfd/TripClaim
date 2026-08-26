@@ -3,6 +3,8 @@ import {getDb} from ".";
 import {CLAIM_TYPE_CODES,DEFAULT_CLAIM_TYPES,DEFAULT_CURRENCIES,DEFAULT_DESTINATIONS,MASTER_DATA_VERSION} from "../app/managed-config";
 import {companyClaimTypes,companyCurrencies,companyDestinations,companyMasterVersions} from "./master-schema";
 
+export {MASTER_DATA_VERSION};
+
 let seedPromise:Promise<void>|null=null;
 
 const parseCountry=(value:string)=>{
@@ -51,7 +53,7 @@ export async function getCompanyMasterCatalog(){
  };
 }
 
-export async function validateCompanyDestination(input:{countryCode?:string;countryName?:string;cityName?:string}){
+export async function validateDestinationMaster(input:{countryCode?:string;countryName?:string;cityName?:string}){
  await ensureCompanyMasterData();
  const countryCode=input.countryCode?.trim().toUpperCase(),countryName=input.countryName?.trim(),cityName=input.cityName?.trim();
  if(!countryCode||!countryName||!cityName)return {valid:false,destination:null,masterDataVersion:MASTER_DATA_VERSION};
@@ -59,6 +61,8 @@ export async function validateCompanyDestination(input:{countryCode?:string;coun
  const [destination]=await db.select().from(companyDestinations).where(and(eq(companyDestinations.versionId,MASTER_DATA_VERSION),eq(companyDestinations.active,true),eq(companyDestinations.countryCode,countryCode),eq(companyDestinations.countryName,countryName),eq(companyDestinations.cityName,cityName))).limit(1);
  return {valid:Boolean(destination),destination:destination?{countryCode:destination.countryCode,countryName:destination.countryName,cityCode:destination.cityCode,cityName:destination.cityName}:null,masterDataVersion:MASTER_DATA_VERSION};
 }
+
+export const validateCompanyDestination=validateDestinationMaster;
 
 export async function validateCompanyExpenseMaster(input:{claimType?:string|null;originalCurrency?:string|null;reportingCurrency?:string|null}){
  await ensureCompanyMasterData();
