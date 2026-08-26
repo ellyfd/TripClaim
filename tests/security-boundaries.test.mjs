@@ -74,13 +74,15 @@ test("deleting a linked travel document permanently deletes its whole order grap
  assert.doesNotMatch(source,/document_in_use/);
 });
 
-test("agenda defaults to business hours with pinned travel rows",async()=>{
+test("agenda is fixed to 24 hours with pinned all-day and stay rows",async()=>{
  const source=await read("app/AgendaSheet.tsx");
  assert.match(source,/const topRows=\["全天","住宿"\]/);
+ assert.match(source,/const showFullDay=true/);
  assert.match(source,/showFullDay\?0:8/);
  assert.match(source,/showFullDay\?23:22/);
  assert.match(source,/pinned-all-day/);
  assert.match(source,/pinned-stay/);
+ assert.doesNotMatch(source,/setShowFullDay/);
 });
 
 test("primary shell exposes one consistent trip workspace IA and adaptive workbench",async()=>{
@@ -245,15 +247,14 @@ test("legacy data is backfilled only when deterministic",async()=>{
  assert.doesNotMatch(migration,/ELSE 'EXP-/);
 });
 
-test("API, OCR and CSV import share one master-data validation service",async()=>{
- const [service,trips,tripEdit,documents,confirm,expenses,agenda]=await Promise.all([
+test("active API and OCR paths share the managed master-data validation service",async()=>{
+ const [service,trips,tripEdit,documents,confirm,expenses]=await Promise.all([
   read("app/master-data-validation.ts"),read("app/api/trips/route.ts"),read("app/api/trips/[id]/route.ts"),
-  read("app/api/documents/route.ts"),read("app/api/documents/[id]/route.ts"),read("app/api/expenses/[id]/route.ts"),read("app/AgendaSheet.tsx"),
+  read("app/api/documents/route.ts"),read("app/api/documents/[id]/route.ts"),read("app/api/expenses/[id]/route.ts"),
  ]);
  assert.match(service,/validateExpenseMaster/);assert.match(service,/validateDestinationMaster/);
  for(const source of [trips,tripEdit])assert.match(source,/validateDestinationMaster/);
  for(const source of [documents,confirm,expenses])assert.match(source,/validateExpenseMaster/);
- assert.match(agenda,/validateDestinationMaster/);
 });
 
 test("exports group by company claim type and reporting currency",async()=>{
@@ -334,6 +335,7 @@ test("mobile itinerary stays focused on today while navigation follows the share
  ]);
  assert.match(agenda,/todayIndex=visibleDates\.indexOf/);
  assert.match(agenda,/mobile-agenda-title">今日行程/);
+ assert.match(agenda,/agenda-view-status/);
  assert.match(page,/const mobileBottomNav=<nav/);
  assert.doesNotMatch(page,/const mobileBottomNav=activeTrip&&/);
  assert.match(page,/aria-label="手機工作區"/);
@@ -343,7 +345,6 @@ test("mobile itinerary stays focused on today while navigation follows the share
  assert.match(page,/>報支<\/span>/);
  assert.doesNotMatch(page,/className="camera"/);
  assert.match(styles,/\.agenda-sheet-editor\{position:fixed!important/);
- assert.match(styles,/\.agenda-toolbar-actions>\.agenda-view-toggle/);
 });
 
 test("mobile expenses prioritize today's tasks while desktop keeps full reporting",async()=>{
