@@ -39,16 +39,18 @@ test("travel upload, todo, comp leave, and calendar live on the same itinerary s
  const itinerary=await read("app/ItineraryWizardLive.tsx");
  assert.match(itinerary,/import TripTodoPanel from "\.\/TripTodoPanel"/);
  assert.match(itinerary,/import CompLeavePanel from "\.\/CompLeavePanel"/);
- assert.match(itinerary,/className="itinerary-inline-prep"/);
+ assert.match(itinerary,/className="itinerary-inline-prep itinerary-primary-intake"/);
  assert.match(itinerary,/<TripTodoPanel tripId=\{tripId\}/);
  assert.match(itinerary,/<CompLeavePanel tripId=\{tripId\}/);
  assert.match(itinerary,/上傳機票／住宿/);
- assert.match(itinerary,/直接出現在下面行事曆/);
+ assert.match(itinerary,/直接排進行事曆/);
  assert.match(itinerary,/AgendaSheet dates=\{dates\}/);
  assert.match(itinerary,/onBookingSaved=\{\(\)=>void load\(tripId\)\}/);
  assert.match(itinerary,/tripclaim:data-changed/);
  assert.doesNotMatch(itinerary,/請到「行前準備」/);
  assert.match(itinerary,/BookingPanel tripId=\{tripId\}/);
+ const intake=itinerary.indexOf("itinerary-primary-intake"),calendar=itinerary.indexOf("<AgendaSheet"),secondary=itinerary.indexOf("itinerary-secondary-tools");
+ assert.ok(intake>=0&&calendar>intake&&secondary>calendar);
 });
 
 test("trip list has one primary entry and opens the calendar directly",async()=>{
@@ -67,7 +69,10 @@ test("shared booking details remain secondary and mobile nav is three equal acti
  assert.match(hierarchy,/\.shared-booking-details>summary\{/);
  assert.match(hierarchy,/\.shared-booking-details\[open\]>summary i/);
  assert.match(simplified,/\.workspace-mobile-nav\.simplified-trip-nav\{grid-template-columns:repeat\(3,minmax\(0,1fr\)\)!important\}/);
- assert.match(simplified,/\.itinerary-inline-prep\{display:grid;grid-template-columns:/);
+ assert.match(simplified,/\.itinerary-inline-prep\{display:block/);
+ assert.match(simplified,/\.itinerary-secondary-tools>summary/);
+ assert.match(simplified,/\.itinerary-secondary-grid\{display:grid/);
+ assert.match(simplified,/\.todo-members>section:not\(\.mine\)\{display:none\}/);
  assert.match(globals,/@import "\.\/styles\/ia-hierarchy\.css";\n@import "\.\/styles\/simplified-trip-ia\.css";\n@import "\.\/styles\/audit-fixes\.css";\s*$/);
 });
 
