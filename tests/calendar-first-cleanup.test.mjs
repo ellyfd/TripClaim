@@ -31,3 +31,21 @@ test("travel intake uses the calendar mental model instead of a separate prepara
  assert.match(page,/<i>\$<\/i>我的報支/);
  assert.doesNotMatch(page,/>總覽<|>行前準備<|>準備<\/span>/);
 });
+
+test("calendar stays visually primary while secondary trip information is deferred",async()=>{
+ const [itinerary,css]=await Promise.all([
+  read("app/ItineraryWizardLive.tsx"),
+  read("app/styles/simplified-trip-ia.css"),
+ ]);
+ const intakeIndex=itinerary.indexOf("itinerary-primary-intake");
+ const calendarIndex=itinerary.indexOf("<AgendaSheet");
+ const secondaryIndex=itinerary.indexOf("itinerary-secondary-tools");
+ assert.ok(intakeIndex>=0&&calendarIndex>intakeIndex&&secondaryIndex>calendarIndex);
+ assert.match(itinerary,/<summary>補休與同行者機票／住宿<\/summary>/);
+ assert.match(itinerary,/上傳機票／住宿後會直接排進行事曆/);
+ assert.match(css,/\.simplified-itinerary-page \.side-booking-actions button\{min-height:48px/);
+ assert.match(css,/\.simplified-itinerary-page \.todo-members\{grid-column:1\/-1;display:flex;gap:8px;margin:0;max-height:92px/);
+ assert.match(css,/\.itinerary-secondary-tools>summary/);
+ assert.match(css,/\.itinerary-secondary-grid\{display:grid/);
+ assert.match(css,/@media\(max-width:800px\)[\s\S]*\.todo-members>section:not\(\.mine\)\{display:none\}/);
+});
