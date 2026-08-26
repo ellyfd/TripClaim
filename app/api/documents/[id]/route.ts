@@ -4,10 +4,13 @@ import {getChatGPTUser} from "../../../chatgpt-auth";
 import {getDb} from "../../../../db";
 import {recordAudit,requireTripMember} from "../../../../db/access";
 import {hardDeleteOrderGraph} from "../../../../db/order-graph";
+import {softDeleteOrdinaryDocument} from "../../../../db/ordinary-document-deletion";
 import {deleteObjectKeysWithRetry} from "../../../../db/object-storage";
 import {masterDataExceptions,personalExpenses,travelBookings,uploadedDocuments} from "../../../../db/schema";
 import {MASTER_DATA_VERSION} from "../../../managed-config";
 import {validateExpenseMaster} from "../../../master-data-validation";
+
+const isTravelDocument=(documentType?:string|null)=>Boolean(documentType&&(documentType==="flight"||documentType==="stay"||documentType.includes("機票")||documentType.includes("住宿")));
 
 export async function GET(request:NextRequest,{params}:{params:Promise<{id:string}>}){
  const user=await getChatGPTUser();if(!user)return NextResponse.json({error:"authentication_required"},{status:401});
@@ -70,7 +73,11 @@ export async function DELETE(request:NextRequest,{params}:{params:Promise<{id:st
   await recordAudit({tripId:doc.tripId,actorEmail:user.email,entityType:"uploaded_document",entityId:id,action:"discard_unlinked_upload",before:{originalName:doc.originalName,documentType:doc.documentType,status:doc.status,contentHash:doc.contentHash},after:{objectDeleted:true,attemptsUsed:objectCleanup.attemptsUsed}});
   return NextResponse.json({discarded:true,exact:true,objectDeleted:true,objectDeleteAttempts:objectCleanup.attemptsUsed});
  }
- const deleted=await hardDeleteOrderGraph({tripId:doc.tripId,ownerEmail:user.email,documentId:id});
- await recordAudit({tripId:doc.tripId,actorEmail:user.email,entityType:"uploaded_document",entityId:id,action:"hard_delete_order_graph",before:{originalName:doc.originalName,documentType:doc.documentType,status:doc.status},after:{bookingIds:deleted.bookingIds,documentIds:deleted.documentIds,duplicateDocumentsDeleted:deleted.duplicateDocumentsDeleted,objectDeleted:deleted.objectDeleted,objectDeleteFailures:deleted.objectDeleteFailures,objectDeleteAttempts:deleted.objectDeleteAttempts}});
- return NextResponse.json({deleted:true,permanent:true,bookingsDeleted:deleted.bookingIds.length,documentDeleted:true,documentsDeleted:deleted.documentIds.length,duplicateDocumentsDeleted:deleted.duplicateDocumentsDeleted,objectDeleted:deleted.objectDeleted,objectDeleteFailures:deleted.objectDeleteFailures,objectDeleteAttempts:deleted.objectDeleteAttempts,cleanupPending:deleted.objectDeleteFailures>0});
+ const [linkedBooking]=await db.select({id:travelBookings.id}).from(travelBookings).where(and(eq(travelBookings.documentId,id),eq(travelBookings.tripId,doc.tripId),eq(travelBookings.ownerEmail,user.email),isNull(travelBookings.deletedAt))).limit(1);
+ if(isTravelDocument(doc.documentType)||linkedBooking){
+  const deleted=await hardDeleteOrderGraph({tripId:doc.tripId,ownerEmail:user.email,bookingId:linkedBooking?.id,documentId:id});
+  await recordAudit({tripId:doc.tripId,actorEmail:user.email,entityType:"uploaded_document",entityId:id,action:"hard_delete_order_graph",before:{originalName:doc.originalName,documentType:doc.documentType,status:doc.status},after:{bookingIds:deleted.bookingIds,documentIds:deleted.documentIds,duplicateDocumentsDeleted:deleted.duplicateDocumentsDeleted,objectDeleted:deleted.objectDeleted,objectDeleteFailures:deleted.objectDeleteFailures,objectDeleteAttempts:deleted.objectDeleteAttempts}});
+  return NextResponse.json({deleted:true,permanent:true,travel:true,bookingsDeleted:deleted.bookingIds.length,documentDeleted:true,documentsDeleted:deleted.documentIds.length,duplicateDocumentsDeleted:deleted.duplicateDocumentsDeleted,objectDeleted:deleted.objectDeleted,objectDeleteFailures:deleted.objectDeleteFailures,objectDeleteAttempts:deleted.objectDeleteAttempts,cleanupPending:deleted.objectDeleteFailures>0});
+ }
+ return NextResponse.json(await softDeleteOrdinaryDocument(doc,user.email));
 }
