@@ -28,11 +28,18 @@ test("itinerary create and edit become visible only after server acknowledgement
  const [client,api]=await Promise.all([read("app/ItineraryWizardLive.tsx"),read("app/api/trips/[id]/agenda/route.ts")]);
  assert.match(client,/method:"POST"/);
  assert.match(client,/setDraft\(null\);const confirmed=await load\(tripId\)/);
- assert.match(client,/已由伺服器確認並同步給所有同行者/);
+ assert.match(client,/已保存並同步給同行者/);
  assert.match(client,/const requestSeq=useRef\(0\)/);
  assert.match(client,/if\(seq!==requestSeq\.current\)return false/);
  assert.match(client,/useEffect\(\(\)=>\{setRows\(\[\]\);setDates\(\[\]\);setDraft\(null\)/);
  assert.match(api,/db\.insert\(agendaItems\)\.values\(value\)/);
  assert.match(api,/status:201/);
  assert.match(api,/db\.select\(\)\.from\(agendaItems\).*eq\(agendaItems\.tripId,id\)/);
+});
+
+test("travel data changes revalidate the calendar on the same workspace",async()=>{
+ const client=await read("app/ItineraryWizardLive.tsx");
+ assert.match(client,/window\.addEventListener\("tripclaim:data-changed",reload\)/);
+ assert.match(client,/<TripTodoPanel tripId=\{tripId\} onBookingSaved=\{\(\)=>void load\(tripId\)\}/);
+ assert.match(client,/AgendaSheet dates=\{dates\} rows=\{rows\}/);
 });

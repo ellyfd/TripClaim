@@ -1,0 +1,12 @@
+/* Simplified trip IA: selecting a trip opens one working surface for travel data + calendar. */
+.simplified-trip-nav{align-items:center}
+.itinerary-inline-prep{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(280px,.5fr);gap:12px;align-items:start;margin:0 0 12px}
+.itinerary-inline-prep>.panel{margin:0}
+.simplified-itinerary-page .trip-todo-panel>header h2{margin-bottom:3px}
+.simplified-itinerary-page .trip-todo-panel>header p{margin:0;color:var(--muted)}
+
+@media(max-width:800px){
+ .workspace-mobile-nav.simplified-trip-nav{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+ .itinerary-inline-prep{grid-template-columns:1fr;gap:8px;margin-bottom:10px}
+ .simplified-itinerary-page .trip-todo-panel,.simplified-itinerary-page .comp-leave{width:100%}
+}
