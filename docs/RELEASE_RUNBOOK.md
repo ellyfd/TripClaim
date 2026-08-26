@@ -16,7 +16,7 @@
 - **Personal state**：補休人工 override 必須 server-persisted；只在 server acknowledgement 後更新 UI；reload 保留；reset 後 reload 回 auto baseline。
 - **Overview**：source-order count 不得等於 raw flight-leg row count；所有活動已過期時不得冒充「下一個行程」。
 - **No dead CTA**：沒有完整 Loading/Preview/Confirm/Write 或等價閉環的 production CTA 不得顯示；Agenda bulk import 未完成前不得露出 Excel/CSV/截圖/PDF入口。
-- **Storage**：System Management → 系統健康可觀察 pending object deletion；不得暴露 object key。
+- **Storage / pending storage cleanup**：System Management → 系統健康可觀察 pending object deletion；不得暴露 object key。
 - **裝置／UAT**：完成 `docs/DEVICE_QA.md` 與 `docs/UAT_RELEASE_RECORD.md`，留下具名測試人、Sites checkpoint、runtime/migration evidence、destructive QA、48h、GO/NO-GO。
 
 ## 發布順序
