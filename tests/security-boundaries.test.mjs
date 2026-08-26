@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {readFile} from "node:fs/promises";
 
 const read=path=>readFile(new URL(`../${path}`,import.meta.url),"utf8");
-const readStyles=async()=>`${await read("app/globals.css")}\n${await read("app/styles/legacy.css")}\n${await read("app/styles/product-shell.css")}`;
+const readStyles=async()=>`${await read("app/globals.css")}\n${await read("app/styles/legacy.css")}\n${await read("app/styles/product-shell.css")}\n${await read("app/styles/simplified-trip-ia.css")}`;
 
 test("personal trip resources require explicit trip context",async()=>{
  const routes=await Promise.all([
@@ -23,7 +23,8 @@ test("the selected trip and stage are canonical URL state",async()=>{
  assert.match(page,/searchParams\.set\("trip",trip\.id\)/);
  assert.match(page,/searchParams\.set\("stage",target\)/);
  assert.match(page,/popstate/);
- assert.match(page,/target:\s*TripStage="overview"/);
+ assert.match(page,/target:\s*TripStage="itinerary"/);
+ assert.match(page,/resolveTripStage/);
  for(const source of [create,itinerary,expense])assert.doesNotMatch(source,/sessionStorage/);
  assert.match(itinerary,/\{tripId\}:\{tripId:string\}/);
  assert.match(expense,/\{tripId\}:\{tripId:string\}/);
@@ -85,22 +86,21 @@ test("agenda is fixed to 24 hours with pinned all-day and stay rows",async()=>{
  assert.doesNotMatch(source,/setShowFullDay/);
 });
 
-test("primary shell exposes one consistent trip workspace IA and adaptive workbench",async()=>{
+test("primary shell exposes one simplified trip workspace IA and adaptive workbench",async()=>{
  const [page,styles]=await Promise.all([
   read("app/page.tsx"),
   readStyles(),
  ]);
  assert.match(page,/aria-label="Trip workspace"/);
  assert.match(page,/<i>⌂<\/i>全部出差/);
- assert.match(page,/<i>◎<\/i>總覽/);
  assert.match(page,/<i>▤<\/i>行程/);
- assert.match(page,/<i>✓<\/i>行前準備/);
  assert.match(page,/<i>\$<\/i>我的報支/);
- assert.doesNotMatch(page,/<i>[1-4]<\/i>(總覽|行程|行前準備|我的報支)/);
+ assert.doesNotMatch(page,/<i>◎<\/i>總覽/);
+ assert.doesNotMatch(page,/<i>✓<\/i>行前準備/);
  assert.match(page,/aria-label="手機工作區"/);
  assert.match(styles,/--app-max:1440px/);
  assert.match(styles,/--aside-width:288px/);
- assert.match(styles,/grid-template-columns:minmax\(0,1fr\) var\(--aside-width\)/);
+ assert.match(styles,/\.workspace-mobile-nav\.simplified-trip-nav\{grid-template-columns:repeat\(3,minmax\(0,1fr\)\)!important\}/);
  assert.match(styles,/safe-area-inset-bottom/);
 });
 
@@ -323,11 +323,11 @@ test("expense workbench uses a desktop drawer and a mobile task order",async()=>
  assert.match(styles,/\.expense-tools\.drawer-open\{transform:translateX\(0\)\}/);
  assert.match(styles,/\.expense-upload-tools\{order:1/);
  assert.match(styles,/\.expense-workbench-main\{order:2\}/);
- assert.match(styles,/\.expense-tools \.missing-live\{order:3\}/);
- assert.match(styles,/\.expense-side-documents\{order:4\}/);
+ assert.match(styles,/\.expense-tools \.missing-live\{order:3/);
+ assert.match(styles,/\.expense-side-documents\{order:4/);
 });
 
-test("mobile itinerary stays focused on today while navigation follows the shared workspace IA",async()=>{
+test("mobile itinerary stays focused on today while navigation stays simple",async()=>{
  const [agenda,page,styles]=await Promise.all([
   read("app/AgendaSheet.tsx"),
   read("app/page.tsx"),
@@ -339,10 +339,10 @@ test("mobile itinerary stays focused on today while navigation follows the share
  assert.match(page,/const mobileBottomNav=<nav/);
  assert.doesNotMatch(page,/const mobileBottomNav=activeTrip&&/);
  assert.match(page,/aria-label="手機工作區"/);
- assert.match(page,/>總覽<\/span>/);
+ assert.match(page,/>出差<\/span>/);
  assert.match(page,/>行程<\/span>/);
- assert.match(page,/>準備<\/span>/);
  assert.match(page,/>報支<\/span>/);
+ assert.doesNotMatch(page,/>總覽<\/span>|>準備<\/span>/);
  assert.doesNotMatch(page,/className="camera"/);
  assert.match(styles,/\.agenda-sheet-editor\{position:fixed!important/);
 });

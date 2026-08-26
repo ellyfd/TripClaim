@@ -4,21 +4,24 @@ import {readFile} from "node:fs/promises";
 
 const read=path=>readFile(new URL(`../${path}`,import.meta.url),"utf8");
 
-test("trip overview counts source orders instead of flight-leg rows",async()=>{
- const source=await read("app/TripOverview.tsx");
- assert.match(source,/const sourceOrderKey=/);
- assert.match(source,/new Set\(\(summary\?\.bookings\?\?\[\]\)\.map\(sourceOrderKey\)\)\.size/);
- assert.match(source,/來自 \$\{sourceOrderCount\} 張機票／住宿訂單/);
- assert.doesNotMatch(source,/bookingCount=summary\?\.bookings\?\.length/);
+test("selecting or creating a trip opens the working itinerary directly",async()=>{
+ const [page,create]=await Promise.all([read("app/page.tsx"),read("app/CreateTripWizardLive.tsx")]);
+ assert.match(page,/target:TripStage="itinerary"/);
+ assert.match(page,/<CreateTripForm onCreate=\{trip=>openTrip\(trip,"itinerary"\)\}/);
+ assert.doesNotMatch(page,/TripOverview|stage==="overview"|navigate\("overview"\)/);
+ assert.match(create,/選一趟出差就直接進行程/);
+ assert.match(create,/建立後直接開啟行程/);
 });
 
-test("overview never compares local itinerary strings against UTC ISO or reuses a past item as next",async()=>{
- const source=await read("app/TripOverview.tsx");
- assert.match(source,/browserLocalNowKey/);
- assert.match(source,/upcomingAgenda=summary\?\.agenda\?\.find\(item=>item\.startsAt>=browserLocalNowKey\(\)\)\?\?null/);
- assert.doesNotMatch(source,/new Date\(\)\.toISOString\(\)\.slice\(0,16\)/);
- assert.doesNotMatch(source,/summary\?\.agenda\?\.\[0\]/);
- assert.match(source,/目前沒有後續安排/);
+test("travel input and its visible calendar result share one workspace",async()=>{
+ const source=await read("app/ItineraryWizardLive.tsx");
+ assert.match(source,/className="itinerary-inline-prep"/);
+ assert.match(source,/<TripTodoPanel/);
+ assert.match(source,/<CompLeavePanel/);
+ assert.match(source,/<AgendaSheet/);
+ assert.match(source,/確認後會直接出現在下面行事曆/);
+ assert.match(source,/tripclaim:data-changed/);
+ assert.doesNotMatch(source,/請到「行前準備」/);
 });
 
 test("agenda toolbar exposes only working controls and does not advertise unfinished bulk import",async()=>{
