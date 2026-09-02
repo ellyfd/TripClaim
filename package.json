@@ -14,6 +14,7 @@
     "test": "npm run build && node --test tests/*.test.mjs",
     "validate:artifact": "bash scripts/validate-artifact.sh",
     "lint": "bash scripts/sites-env.sh -- eslint . --ignore-pattern dist --ignore-pattern .next",
+    "deploy:cloudflare": "node scripts/deploy-cloudflare.mjs",
     "db:generate": "bash scripts/sites-env.sh -- drizzle-kit generate",
     "db:migrate:local": "node scripts/db-migrate-local.mjs"
   },

@@ -1,0 +1,9 @@
+{
+  "workerName": "tripclaim",
+  "d1DatabaseName": "tripclaim-db",
+  "d1DatabaseId": "填入 wrangler d1 create 回傳的 database_id",
+  "r2BucketName": "tripclaim-attachments",
+  "accessTeamDomain": "your-team.cloudflareaccess.com",
+  "accessAud": "填入 Access 應用程式的 Audience (AUD) tag",
+  "imagesBinding": true
+}

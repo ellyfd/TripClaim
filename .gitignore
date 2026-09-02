@@ -33,6 +33,9 @@ yarn-error.log*
 # vercel
 .vercel
 
+# 自架部署設定（含個人 Cloudflare 資源 id；以 deploy.cloudflare.example.json 為範本）
+deploy.cloudflare.json
+
 # typescript
 next-env.d.ts
 /dist/
