@@ -144,9 +144,16 @@ Cloudflare D1（SQLite）＋ R2（附件儲存）
 | 資料庫 | [Cloudflare D1](https://developers.cloudflare.com/d1/) + [Drizzle ORM](https://orm.drizzle.team) | — |
 | 附件儲存 | [Cloudflare R2](https://developers.cloudflare.com/r2/) | — |
 | 文件辨識 | [tesseract.js](https://github.com/naptha/tesseract.js)（OCR）+ [unpdf](https://github.com/unjs/unpdf)（PDF 解析） | — |
-| 身分驗證 | Sign in with ChatGPT（[`app/chatgpt-auth.ts`](app/chatgpt-auth.ts)） | — |
+| 身分驗證 | Sign in with ChatGPT（[`app/chatgpt-auth.ts`](app/chatgpt-auth.ts)）；自架部署改用 Cloudflare Access（[`worker/cf-access.ts`](worker/cf-access.ts)） | — |
 
 綁定宣告於 [`.openai/hosting.json`](.openai/hosting.json)（D1 binding `DB`、R2 binding `BUCKET`）；本地開發由 [`vite.config.ts`](vite.config.ts) 以 miniflare 模擬。
+
+### 部署選項
+
+| 方式 | 說明 |
+| --- | --- |
+| GPT site（現況 live demo） | 由 ChatGPT Sites 平台代管與發布，以 ChatGPT 帳號登入 |
+| **自架 Cloudflare**（不走 GPT site） | 部署到自己的 Cloudflare 帳號（Workers + D1 + R2），以 Cloudflare Access 登入，可綁自訂網域 → **[自架部署指南](docs/deploy-cloudflare.md)**，一鍵指令 `npm run deploy:cloudflare` |
 
 ---
 
@@ -286,6 +293,7 @@ npm test    # 建置 + 產物驗證 + node --test
 **專案**
 
 - [線上網站](https://quick-trip-claim.ellyfd.chatgpt.site/) — 快報 TripClaim live demo（需 ChatGPT 登入）
+- [自架部署指南](docs/deploy-cloudflare.md) — 部署到自己的 Cloudflare 帳號（不走 GPT site）
 - [GitHub Repo](https://github.com/ellyfd/TripClaim)
 - [變更歷史（已合併 PR）](https://github.com/ellyfd/TripClaim/pulls?q=is%3Apr+is%3Amerged)
 
