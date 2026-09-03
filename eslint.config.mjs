@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Skill assets (ui-ux-pro-max 等), not application code.
+    ".claude/**",
   ]),
 ]);
 
