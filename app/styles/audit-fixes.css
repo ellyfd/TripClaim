@@ -49,10 +49,10 @@
 .flight-duration-segment.segment-day-start{border-radius:6px 6px 0 0}
 .flight-duration-segment.segment-day-end{border-radius:0 0 6px 6px}
 .flight-duration-segment.segment-day-start.segment-day-end{border-radius:6px}
-.flight-duration-segment b{font-size:11px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.flight-duration-segment span{font-size:10px;line-height:1.15;color:#4d6478;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.flight-duration-segment b{font-size:12px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.flight-duration-segment span{font-size:12px;line-height:1.15;color:#4d6478;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .flight-duration-segment .flight-arrival{margin-top:auto;color:#294f71;font-weight:850}
-.flight-duration-segment .flight-timezone-meta{display:block;color:#315a7d;font-size:9px;line-height:1.2;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.flight-duration-segment .flight-timezone-meta{display:block;color:#315a7d;font-size:12px;line-height:1.2;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .flight-duration-segment>button{position:absolute;right:3px;top:2px;width:22px;height:22px;border:0;background:transparent;color:#8f554a;font-size:17px;line-height:1}
 .flight-duration-segment:not(.segment-flight-start)>button{display:none}
 
@@ -145,16 +145,27 @@
  .overview-card p{min-height:0}
  .trip-preparation-page .trip-todo-panel,.trip-preparation-page .comp-leave-panel{width:100%}
  .agenda-window-nav{justify-content:space-between;gap:6px;padding:6px}
- .agenda-window-nav span{font-size:11px}
+ .agenda-window-nav span{font-size:12px}
  .agenda-window-nav button{padding:0 8px;font-size:12px}
  .flight-range-notice{font-size:13px;line-height:1.4}
  .flight-duration-segment{padding:4px 27px 4px 8px}
  .flight-duration-segment b{font-size:13px}
  .flight-duration-segment span{font-size:12px}
- .flight-duration-segment .flight-timezone-meta{font-size:11px}
+ .flight-duration-segment .flight-timezone-meta{font-size:12px}
  .agenda-sheet .sheet-time.pinned-all-day,.agenda-sheet .sheet-cell.pinned-all-day{min-height:72px}
  .agenda-sheet .sheet-cell.pinned-all-day .sheet-event{min-height:60px;justify-content:center}
  .flight-duration-segment .flight-time-log{line-height:1.4}
  .quick-booking-dialog .flight-route-block{grid-template-columns:1fr 1fr!important}
  .quick-booking-dialog .flight-route-block>i{display:none!important}
+}
+
+/* 2026-09-03 UI/UX audit remediation (items 2-3). */
+
+/* #3 Keyboard focus: brand ring at >=3:1 against the app's light surfaces,
+   replacing reliance on unverified browser defaults. */
+:focus-visible{outline:2px solid var(--green,#145c47);outline-offset:2px}
+
+/* #2 Respect reduced-motion: collapse animations and transitions app-wide. */
+@media (prefers-reduced-motion:reduce){
+ *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}
 }
