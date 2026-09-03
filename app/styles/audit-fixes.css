@@ -169,3 +169,12 @@
 @media (prefers-reduced-motion:reduce){
  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}
 }
+
+/* #5 Unified SVG icon family: size follows the surrounding font-size so
+   icons drop into existing <i> containers and button labels unchanged. */
+.icon{width:1em;height:1em;display:inline-block;vertical-align:-.15em;flex:none}
+button>.icon:first-child,.icon+span{margin-inline-end:0}
+.mobile-nav i .icon{font-size:22px}
+.topbar nav button i .icon{font-size:13px}
+.missing-list article i .icon,.trip-steps i .icon,.steps i .icon{font-size:15px}
+.trash-mark .icon{font-size:24px}

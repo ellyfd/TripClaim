@@ -23,9 +23,9 @@ test("trip workspace is simplified to trips, calendar, and claim",async()=>{
  assert.match(page,/target:TripStage="itinerary"/);
  assert.match(page,/const resolveTripStage=.*value==="expense"\?"expense":"itinerary"/);
  assert.match(page,/aria-label="Trip workspace"/);
- assert.match(page,/<i>⌂<\/i>全部出差/);
- assert.match(page,/<i>▤<\/i>行程/);
- assert.match(page,/<i>\$<\/i>我的報支/);
+ assert.match(page,/<i><HomeIcon\/><\/i>全部出差/);
+ assert.match(page,/<i><CalendarIcon\/><\/i>行程/);
+ assert.match(page,/<i><ReceiptIcon\/><\/i>我的報支/);
  assert.doesNotMatch(page,/<i>◎<\/i>總覽/);
  assert.doesNotMatch(page,/<i>✓<\/i>行前準備/);
  assert.doesNotMatch(page,/TripOverview|TripPreparation/);

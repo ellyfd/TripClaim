@@ -6,7 +6,7 @@ const read=path=>readFile(new URL(`../${path}`,import.meta.url),"utf8");
 
 test("desktop has one all-trips entry while mobile keeps the contextual back action",async()=>{
  const [page,styles]=await Promise.all([read("app/page.tsx"),read("app/styles/ia-hierarchy.css")]);
- assert.match(page,/<i>⌂<\/i>全部出差/);
+ assert.match(page,/<i><HomeIcon\/><\/i>全部出差/);
  assert.match(page,/className="back" onClick=\{goTrips\}>← 全部出差<\/button>/);
  assert.match(styles,/@media\(min-width:801px\)[\s\S]*\.trip-context-nav \.back\{display:none\}/);
  assert.match(styles,/@media\(max-width:800px\)/);

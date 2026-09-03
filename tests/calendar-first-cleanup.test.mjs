@@ -26,9 +26,9 @@ test("travel intake uses the calendar mental model instead of a separate prepara
  assert.match(itinerary,/AgendaSheet dates=\{dates\}/);
  assert.match(itinerary,/上方「我的行程資料」/);
  assert.doesNotMatch(itinerary,/請到「行前準備」/);
- assert.match(page,/<i>⌂<\/i>全部出差/);
- assert.match(page,/<i>▤<\/i>行程/);
- assert.match(page,/<i>\$<\/i>我的報支/);
+ assert.match(page,/<i><HomeIcon\/><\/i>全部出差/);
+ assert.match(page,/<i><CalendarIcon\/><\/i>行程/);
+ assert.match(page,/<i><ReceiptIcon\/><\/i>我的報支/);
  assert.doesNotMatch(page,/>總覽<|>行前準備<|>準備<\/span>/);
 });
 
