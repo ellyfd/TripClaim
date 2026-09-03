@@ -22,10 +22,10 @@ body{font-size:15px;line-height:1.5}
 .panel{border-radius:var(--radius);box-shadow:0 1px 2px rgba(18,45,35,.025)}
 .topbar{height:72px;padding:0;background:#fff}
 .topbar-inner{width:min(var(--app-max),calc(100% - 64px));gap:32px}
-.brand{min-width:168px}.brand>span{width:40px;height:40px;border-radius:10px}.brand b{font-size:16px;line-height:1.25}.brand small{font-size:11px}
+.brand{min-width:168px}.brand>span{width:40px;height:40px;border-radius:10px}.brand b{font-size:16px;line-height:1.25}.brand small{font-size:12px}
 .topbar nav{gap:8px;margin-left:32px}
 .topbar nav button{min-width:116px;padding:0 14px;display:flex;align-items:center;justify-content:center;gap:8px;font-size:14px;font-weight:700}
-.topbar nav button i{width:22px;height:22px;display:grid;place-items:center;border-radius:50%;background:#edf2ef;color:#718079;font-size:11px;font-style:normal;font-weight:900}
+.topbar nav button i{width:22px;height:22px;display:grid;place-items:center;border-radius:50%;background:#edf2ef;color:#718079;font-size:12px;font-style:normal;font-weight:900}
 .topbar nav button.active i{background:var(--green);color:#fff}
 .topbar nav button:disabled{opacity:.38;cursor:not-allowed}
 .management-trigger{min-height:38px;padding:0 14px;border:1px solid #bfd0c8;border-radius:8px;background:white;color:var(--green);font-size:14px;font-weight:800;cursor:pointer}
@@ -122,10 +122,10 @@ body{font-size:15px;line-height:1.5}
  .agenda-mobile-days button{min-height:44px}
  .agenda-sheet-editor{position:fixed!important;left:0;right:0;bottom:calc(72px + env(safe-area-inset-bottom));z-index:225;max-height:72svh;margin:0;padding:16px 14px calc(16px + env(safe-area-inset-bottom));overflow:auto;border-radius:16px 16px 0 0;box-shadow:0 -18px 50px rgba(17,45,35,.24)}
  .mobile-nav button[aria-disabled="true"]{color:#8b9892}.mobile-nav button[aria-disabled="true"] i{opacity:.55}
- .mobile-expense-overview{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0 0 9px}.mobile-expense-overview>div{padding:11px;border-radius:9px;background:#eef5f1;display:flex;flex-direction:column}.mobile-expense-overview span,.mobile-expense-overview small{font-size:12px;color:var(--muted)}.mobile-expense-overview b{font-size:20px;color:var(--green)}.mobile-expense-overview>p{grid-column:1/-1;margin:4px 0 0;display:flex;align-items:end;justify-content:space-between}.mobile-expense-overview>p b{font-size:16px;color:var(--ink)}.mobile-expense-overview>p span{font-size:11px}
+ .mobile-expense-overview{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0 0 9px}.mobile-expense-overview>div{padding:11px;border-radius:9px;background:#eef5f1;display:flex;flex-direction:column}.mobile-expense-overview span,.mobile-expense-overview small{font-size:12px;color:var(--muted)}.mobile-expense-overview b{font-size:20px;color:var(--green)}.mobile-expense-overview>p{grid-column:1/-1;margin:4px 0 0;display:flex;align-items:end;justify-content:space-between}.mobile-expense-overview>p b{font-size:16px;color:var(--ink)}.mobile-expense-overview>p span{font-size:12px}
  .expense-workbench-main .expense-totals{display:none}.expense-real-list article:nth-child(n+6){display:none}
 }
-.shared-booking-overview .booking-card dt{font-size:11px}
+.shared-booking-overview .booking-card dt{font-size:12px}
 .shared-booking-overview .booking-card dd{font-size:13px}
 .shared-booking-overview .booking-card footer a,.shared-booking-overview .booking-card footer button{min-height:34px;font-size:12px}
 .flight-segments>section>header{display:flex;align-items:center;gap:10px}

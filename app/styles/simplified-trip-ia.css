@@ -4,7 +4,7 @@
 .itinerary-inline-prep>.panel{margin:0}
 .simplified-itinerary-page .trip-todo-panel{display:grid;grid-template-columns:minmax(220px,1fr) auto;gap:10px 16px;align-items:center;padding:12px 14px}
 .simplified-itinerary-page .trip-todo-panel>header{min-width:0}
-.simplified-itinerary-page .trip-todo-panel>header span{font-size:11px}
+.simplified-itinerary-page .trip-todo-panel>header span{font-size:12px}
 .simplified-itinerary-page .trip-todo-panel>header h2{margin:1px 0 2px;font-size:18px}
 .simplified-itinerary-page .trip-todo-panel>header p{margin:0;color:var(--muted);font-size:12px}
 .simplified-itinerary-page .side-booking-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;min-width:360px}
@@ -15,7 +15,7 @@
 .simplified-itinerary-page .todo-person small{display:none}
 .simplified-itinerary-page .todo-checks{display:flex;gap:5px;flex-wrap:wrap}
 .simplified-itinerary-page .todo-checks label{min-height:30px;padding:3px 7px}
-.simplified-itinerary-page .todo-checks label span{font-size:11px}
+.simplified-itinerary-page .todo-checks label span{font-size:12px}
 .simplified-itinerary-page .sync-line{margin-bottom:6px!important}
 .itinerary-secondary-tools{margin-top:12px;padding:0;overflow:hidden;background:#fff}
 .itinerary-secondary-tools>summary{min-height:48px;display:flex;align-items:center;padding:0 14px;cursor:pointer;color:var(--green);font-weight:850;list-style:none}

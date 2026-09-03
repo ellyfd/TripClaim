@@ -45,6 +45,6 @@ export default function Home(){
   {stage==="create"&&<CreateTripForm onCreate={trip=>openTrip(trip,"itinerary")}/>} 
   {stage==="itinerary"&&activeTrip&&<ItineraryWizard key={`itinerary-${activeTrip.id}`} tripId={activeTrip.id}/>} 
   {stage==="expense"&&activeTrip&&<ExpensePageBoundary key={`expense-${activeTrip.id}`} onBack={()=>navigate("itinerary")}><ExpenseWizard tripId={activeTrip.id}/></ExpensePageBoundary>}
-  {mobileBottomNav}{management}{toast&&<div className="toast">✓ {toast}</div>}
+  {mobileBottomNav}{management}{toast&&<div className="toast" role="status">✓ {toast}</div>}
  </main>;
 }
