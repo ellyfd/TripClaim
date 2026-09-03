@@ -1,4 +1,5 @@
 "use client";
+import {HomeIcon,CalendarIcon,ReceiptIcon,CheckIcon} from "./icons";
 
 import {useEffect,useState} from "react";
 import CreateTripForm from "./CreateTripWizardLive";
@@ -28,14 +29,14 @@ export default function Home(){
  const navigate=(target:TripStage)=>activeTrip?openTrip(activeTrip,target):show("請先建立或選擇一趟出差");
 
  const mobileBottomNav=<nav className="mobile-nav workspace-mobile-nav simplified-trip-nav" aria-label="手機工作區">
-  <button className={stage==="create"?"on":""} onClick={goTrips}><i>⌂</i><span>出差</span></button>
-  <button className={stage==="itinerary"?"on":""} aria-disabled={!activeTrip} onClick={()=>navigate("itinerary")}><i>▤</i><span>行程</span></button>
-  <button className={stage==="expense"?"on":""} aria-disabled={!activeTrip} onClick={()=>navigate("expense")}><i>$</i><span>報支</span></button>
+  <button className={stage==="create"?"on":""} onClick={goTrips}><i><HomeIcon/></i><span>出差</span></button>
+  <button className={stage==="itinerary"?"on":""} aria-disabled={!activeTrip} onClick={()=>navigate("itinerary")}><i><CalendarIcon/></i><span>行程</span></button>
+  <button className={stage==="expense"?"on":""} aria-disabled={!activeTrip} onClick={()=>navigate("expense")}><i><ReceiptIcon/></i><span>報支</span></button>
  </nav>;
  const management=manage&&<SystemManagement account={account} mode={manage} onClose={()=>setManage(null)} onProfileSaved={profile=>setAccount(current=>({...current,...profile}))}/>;
  const appHeader=<header className="topbar"><div className="topbar-inner">
   <div className="brand"><span>快</span><div><b>快報</b><small>TripClaim</small></div></div>
-  <nav aria-label="Trip workspace" className="simplified-trip-nav"><button className={stage==="create"?"active":""} onClick={goTrips}><i>⌂</i>全部出差</button><button disabled={!activeTrip} className={stage==="itinerary"?"active":""} onClick={()=>navigate("itinerary")}><i>▤</i>行程</button><button disabled={!activeTrip} className={stage==="expense"?"active":""} onClick={()=>navigate("expense")}><i>$</i>我的報支</button></nav>
+  <nav aria-label="Trip workspace" className="simplified-trip-nav"><button className={stage==="create"?"active":""} onClick={goTrips}><i><HomeIcon/></i>全部出差</button><button disabled={!activeTrip} className={stage==="itinerary"?"active":""} onClick={()=>navigate("itinerary")}><i><CalendarIcon/></i>行程</button><button disabled={!activeTrip} className={stage==="expense"?"active":""} onClick={()=>navigate("expense")}><i><ReceiptIcon/></i>我的報支</button></nav>
   <div className="account-spacer"/>{account.role==="admin"&&<button className="management-trigger" onClick={()=>setManage("admin")}>管理</button>}<button className="account-menu" onClick={()=>setManage("personal")}><span className="account-name"><b>{account.displayName}</b><small>{account.authenticated?"已登入・個人資料":"示範帳號"}</small></span><span className="profile" title={account.email}>{account.displayName.split(/\s+/).map(x=>x[0]).join("").slice(0,2).toUpperCase()}</span></button>
  </div></header>;
  const tripContext=activeTrip&&<section className="trip-context-nav"><button className="back" onClick={goTrips}>← 全部出差</button><div><span>目前出差</span><b>{activeTrip.name}</b></div></section>;
@@ -45,6 +46,6 @@ export default function Home(){
   {stage==="create"&&<CreateTripForm onCreate={trip=>openTrip(trip,"itinerary")}/>} 
   {stage==="itinerary"&&activeTrip&&<ItineraryWizard key={`itinerary-${activeTrip.id}`} tripId={activeTrip.id}/>} 
   {stage==="expense"&&activeTrip&&<ExpensePageBoundary key={`expense-${activeTrip.id}`} onBack={()=>navigate("itinerary")}><ExpenseWizard tripId={activeTrip.id}/></ExpensePageBoundary>}
-  {mobileBottomNav}{management}{toast&&<div className="toast" role="status">✓ {toast}</div>}
+  {mobileBottomNav}{management}{toast&&<div className="toast" role="status"><CheckIcon/> {toast}</div>}
  </main>;
 }

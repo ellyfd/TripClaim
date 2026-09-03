@@ -1,4 +1,5 @@
 "use client";
+import {CheckIcon} from "./icons";
 import {useCallback,useEffect,useState} from "react";
 
 type HealthItem={id:string;ownerEmail:string;tripId:string;sourceType:string;sourceId:string|null;attempts:number;lastError:string|null;createdAt:string;updatedAt:string};
@@ -20,6 +21,6 @@ export default function AdminStorageHealth(){
   <div className="management-add"><button disabled={busy||!summary?.pending} onClick={retry}>{busy?"重試中…":"重試待清理附件"}</button><button disabled={busy} onClick={()=>load()}>重新整理</button></div>
   {summary&&summary.pending>summary.shown&&<div className="management-note"><b>明細已截斷</b><p>共有 {summary.pending} 筆 pending；下方僅列最舊 {summary.shown} 筆，總數仍以摘要為準。</p></div>}
   {message&&<strong>{message}</strong>}
-  {!data?<p>正在讀取…</p>:!data.items.length?<div className="management-note"><b>✓ Storage cleanup 正常</b><p>目前沒有 pending object deletion。</p></div>:data.items.map(item=><article className="login-user-row health-row" key={item.id}><div><b>{item.sourceType}・{item.sourceId??"legacy"}</b><small>{item.ownerEmail}・Trip {item.tripId}</small><small>等待 {age(item.createdAt)}・已嘗試 {item.attempts} 次</small>{item.lastError&&<small>{item.lastError}</small>}</div><span>{new Date(item.updatedAt).toLocaleString()}</span></article>)}
+  {!data?<p>正在讀取…</p>:!data.items.length?<div className="management-note"><b><CheckIcon/> Storage cleanup 正常</b><p>目前沒有 pending object deletion。</p></div>:data.items.map(item=><article className="login-user-row health-row" key={item.id}><div><b>{item.sourceType}・{item.sourceId??"legacy"}</b><small>{item.ownerEmail}・Trip {item.tripId}</small><small>等待 {age(item.createdAt)}・已嘗試 {item.attempts} 次</small>{item.lastError&&<small>{item.lastError}</small>}</div><span>{new Date(item.updatedAt).toLocaleString()}</span></article>)}
  </div>;
 }
