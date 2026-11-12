@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""依 manifest 產生報支整包：要印.pdf、Excel、上傳/、zip。
+"""依 manifest 產生報支整包：列印_電子及截圖憑證_<名稱>.pdf、Excel、上傳/、zip。
 
 用法：python3 build_pack.py manifest.json [輸出目錄]
 規則見 ../references/rules.md；manifest 格式見 ../assets/manifest.example.json。
@@ -427,7 +427,8 @@ def main():
         up = [to_pdf_page(p) for p in shot_pages(it, False)] + efs + photo_pages(base, it)
         n = write_pdf(up, os.path.join(out, "上傳", upload_name(i, it))) if up else 0
         print(f"{upload_name(i, it)}: 憑證數 {voucher_count(it)}，上傳 {n} 頁，要印 {len(printed) + len(efs)} 頁")
-    print("要印.pdf:", write_pdf(print_pages, os.path.join(out, "要印.pdf")), "頁")
+    pname = f"列印_電子及截圖憑證_{name}.pdf"
+    print(pname + ":", write_pdf(print_pages, os.path.join(out, pname)), "頁")
     write_xlsx(m, os.path.join(out, name + ".xlsx"), out)
     zpath = out.rstrip("/") + ".zip"
     with zipfile.ZipFile(zpath, "w", zipfile.ZIP_DEFLATED) as z:   # zipfile 會替中文檔名標 UTF-8
