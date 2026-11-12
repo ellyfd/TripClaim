@@ -294,7 +294,7 @@ npm test    # 建置 + 產物驗證 + node --test
 
 - [線上網站](https://quick-trip-claim.ellyfd.chatgpt.site/) — 快報 TripClaim live demo（需 ChatGPT 登入）
 - [自架部署指南](docs/deploy-cloudflare.md) — 部署到自己的 Cloudflare 帳號（不走 GPT site）
-- [報支整包 skill](.claude/skills/trip-claim/SKILL.md) — 結帳的引導步驟、金額與版面規則、產生要印與上傳檔的腳本
+- [報支整包 skill](.claude/skills/BizTrip_expense/SKILL.md) — 結帳的引導步驟、金額與版面規則、產生要印與上傳檔的腳本
 - [GitHub Repo](https://github.com/ellyfd/TripClaim)
 - [變更歷史（已合併 PR）](https://github.com/ellyfd/TripClaim/pulls?q=is%3Apr+is%3Amerged)
 
