@@ -13,7 +13,7 @@ const currentGroups=records=>{
   group.expenseIds.push(record.id);
   groups.set(key,group);
  }
- const companyOrder=["機票(自行刷卡)","住宿","車資","落地簽證費","預支歸還","餐飲","交際費／伴手禮","行李託運費","疫苗／檢測費用","探親樣衣","無報支費用","電信網路費","簽證費用","國外交易手續費"];
+ const companyOrder=["機票(自行刷卡)","住宿","車資","落地簽證費","預支歸還","餐飲","交際費／伴手禮","行李託運費","疫苗／檢測費用","採買樣衣","無報支費用","電信網路費","簽證費用","國外交易手續費"];
  return [...groups.values()].sort((a,b)=>companyOrder.indexOf(a.category)-companyOrder.indexOf(b.category)||a.currency.localeCompare(b.currency));
 };
 
