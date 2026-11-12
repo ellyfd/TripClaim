@@ -23,6 +23,10 @@ NOTE_H = 60
 SLOT_W_MM = 80                 # 熱感紙收據寬
 ORANGE, GREY, DARK = (200, 90, 0), (150, 150, 150), (60, 60, 60)
 MIN_SCALE = 0.6
+# 系統選單的幣別名稱（app/managed-config.ts 的 DEFAULT_CURRENCIES）
+CURRENCIES = {"台幣", "美金", "人民幣", "日元", "印尼盾", "柬幣", "英鎊", "港幣", "菲披索", "越南盾",
+              "歐元", "韓元", "土耳其里拉", "丹麥克朗", "加拿大幣", "瓜地馬拉格查爾", "印度盧比",
+              "衣索比亞比爾", "孟加拉塔卡", "阿聯迪拉姆", "約旦丁那", "埃及鎊", "泰銖", "新加坡幣", "澳幣"}
 
 
 def find_font():
@@ -370,6 +374,9 @@ def main():
     out = sys.argv[2] if len(sys.argv) > 2 else os.path.join(base, "整包_" + name)
     os.makedirs(os.path.join(out, "上傳"), exist_ok=True)
     ppi = m.get("phone_ppi", 460)
+    bad = [f"{it['category']}：{it['currency']}" for it in m["items"] if it["currency"] not in CURRENCIES]
+    if bad:
+        sys.exit("這些列的幣別不在系統選單，要用信用卡明細轉台幣、自己一列：\n  " + "\n  ".join(bad))
 
     print_pages = []
     for i, it in enumerate(m["items"], 1):
