@@ -376,7 +376,15 @@ def main():
     ppi = m.get("phone_ppi", 460)
     bad = [f"{it['category']}：{it['currency']}" for it in m["items"] if it["currency"] not in CURRENCIES]
     if bad:
-        sys.exit("這些列的幣別不在系統選單，要用信用卡明細轉台幣、自己一列：\n  " + "\n  ".join(bad))
+        sys.exit("這些列的幣別不在系統選單，要用信用卡明細轉台幣，併進該項目的台幣列：\n  " + "\n  ".join(bad))
+    seen, dup = set(), []
+    for it in m["items"]:
+        k = (it["category"], it["currency"])
+        if k in seen:
+            dup.append("／".join(k))
+        seen.add(k)
+    if dup:
+        sys.exit("同項目同幣別要加總成一列，這些出現了不只一次：\n  " + "\n  ".join(dup))
 
     print_pages = []
     for i, it in enumerate(m["items"], 1):
