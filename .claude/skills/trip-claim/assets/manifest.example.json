@@ -1,0 +1,71 @@
+{
+  "name": "東京出差報支_20260301-0304",
+  "version": "v1",
+  "phone_ppi": 460,
+  "items": [
+    {
+      "category": "機票(自行刷卡)",
+      "currency": "台幣",
+      "amount": 18500,
+      "remark": "去程 TPE→NRT 3/1、回程 NRT→TPE 3/4",
+      "cost_center": "",
+      "entries": [
+        {"code": "機票", "physical": [{"kind": "boarding", "count": 2, "photo": "boarding.jpg", "label": "登機證"}]}
+      ]
+    },
+    {
+      "category": "住宿",
+      "currency": "台幣",
+      "amount": 12480,
+      "remark": "某飯店 3/1–3/4：訂房網站 11,900＋現場 JPY 2,400＝571＋手續費 9",
+      "entries": [
+        {
+          "code": "住宿1",
+          "title": "某飯店 JPY 2,400",
+          "screenshots": [{"file": "card_hotel.jpg", "label": "入帳 571＋手續費 9", "vouchers": 2}],
+          "efiles": [{"file": "booking_receipt.pdf", "label": "訂房收據"}],
+          "physical": [{"kind": "a4", "label": "飯店發票", "photo": "hotel_invoice.jpg"}]
+        }
+      ]
+    },
+    {
+      "category": "餐飲",
+      "currency": "台幣",
+      "amount": 745,
+      "remark": "拉麵 238＋4；外送 495＋8（均含手續費）",
+      "entries": [
+        {
+          "code": "餐1",
+          "title": "拉麵店",
+          "screenshots": [{"file": "card_ramen.jpg", "label": "238＋手續費 4", "vouchers": 2}],
+          "physical": [{"kind": "small", "label": "拉麵店 實體收據（JPY 1,000）", "photo": "ramen.jpg", "crop": [150, 60, 1340, 1960], "width_mm": 80}]
+        },
+        {
+          "code": "餐2",
+          "title": "外送",
+          "screenshots": [
+            {"file": "card_delivery.jpg", "label": "入帳 495"},
+            {"file": "card_delivery_fee.jpg", "label": "手續費 8"}
+          ],
+          "efiles": [{"file": "delivery_receipt.pdf", "pages": [1], "label": "外送收據"}]
+        }
+      ]
+    },
+    {
+      "category": "預支歸還",
+      "currency": "日圓",
+      "amount": 0,
+      "remark": "",
+      "entries": []
+    }
+  ],
+  "_說明": {
+    "phone_ppi": "截圖手機的螢幕密度，用來把截圖縮到實際大小（像素寬 ÷ ppi）。iPhone Pro 系列 460。",
+    "screenshots.vouchers": "這張截圖算幾張憑證。入帳和手續費在同一張時填 2，預設 1。",
+    "screenshots.label": "不要寫卡別或卡號。",
+    "efiles.pages": "只印哪幾頁（從 1 起算）。Uber／外送收據只印第 1 頁。省略＝全部。",
+    "physical.kind": "small＝小收據（留黏貼位）；a4＝A4 紙本（另附）；boarding＝登機證（count 填張數）。",
+    "physical.photo/crop/width_mm": "只用在上傳檔。crop 是裁掉背景的像素框 [左,上,右,下]；width_mm 是裁完後的實際寬度。",
+    "amount": "一列的總額。台幣入帳＋手續費都要加進來。"
+  }
+}
