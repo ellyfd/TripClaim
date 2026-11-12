@@ -367,7 +367,8 @@ def write_xlsx(m, path, out):
         ws.append([it["category"], it["currency"], it["amount"], voucher_count(it),
                    att if os.path.exists(os.path.join(out, "上傳", att)) else "",
                    it.get("remark", ""), it.get("cost_center", "")])
-        totals[it["currency"]] = totals.get(it["currency"], 0) + it["amount"]
+        if it["category"] != "預支歸還":   # 預支歸還不算進費用合計
+            totals[it["currency"]] = totals.get(it["currency"], 0) + it["amount"]
     for cur, amt in totals.items():
         ws.append(["合計", cur, amt])
     thin = Side(style="thin", color="DDDDDD")
