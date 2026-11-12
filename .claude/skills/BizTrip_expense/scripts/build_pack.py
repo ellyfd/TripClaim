@@ -193,10 +193,27 @@ def shot_pages(item, with_slots):
         draw(pg, d, *flow(chunk, MARGIN, top, W - 2 * MARGIN, 1.0)[:2])
         return pages + [pg]
 
-    title = item["category"] + "｜實體收據黏貼處（左）＋信用卡明細（右）"
     slots = [(e, p) for e in slot_entries for p in e["_slots"]]
-    others = [e for e in entries if not e["_slots"]]
     sw = round(SLOT_W_MM * MM)
+    if not entries:
+        # 都報原幣、沒有信用卡明細：不留右邊的截圖區，留位框兩欄兩列排滿
+        title = item["category"] + "｜實體收據黏貼處"
+        gap_x = round(10 * MM)
+        x_start = (W - (2 * sw + gap_x)) // 2
+        for pi in range(0, len(slots), 4):
+            pg, d, top = new_page(title)
+            sh_h = (H - MARGIN - top - GAP) // 2 - LABEL_H
+            for k, (e, p) in enumerate(slots[pi:pi + 4]):
+                x = x_start + (k % 2) * (sw + gap_x)
+                y = top + (k // 2) * (LABEL_H + sh_h + GAP)
+                d.text((x, y), f"{e['code']}｜{p.get('label', '實體收據')}", font=F_LABEL, fill=ORANGE)
+                dashed_box(d, x, y + LABEL_H, sw, sh_h)
+                d.multiline_text((x + sw / 2, y + LABEL_H + sh_h / 2), "實體收據\n貼這裡",
+                                 font=F_SLOT, fill=GREY, anchor="mm", align="center")
+            pages.append(pg)
+        return pages
+    title = item["category"] + "｜實體收據黏貼處（左）＋信用卡明細（右）"
+    others = [e for e in entries if not e["_slots"]]
     for pi in range(0, len(slots), 2):
         pair = slots[pi:pi + 2]
         pg, d, top = new_page(title)
