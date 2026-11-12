@@ -10,7 +10,17 @@
       "remark": "去程 TPE→NRT 3/1、回程 NRT→TPE 3/4",
       "cost_center": "",
       "entries": [
-        {"code": "機票", "physical": [{"kind": "boarding", "count": 2, "photo": "boarding.jpg", "label": "登機證"}]}
+        {
+          "code": "機票",
+          "physical": [
+            {
+              "kind": "boarding",
+              "count": 2,
+              "photo": "boarding.jpg",
+              "label": "登機證"
+            }
+          ]
+        }
       ]
     },
     {
@@ -22,9 +32,26 @@
         {
           "code": "住宿1",
           "title": "某飯店 JPY 2,400",
-          "screenshots": [{"file": "card_hotel.jpg", "label": "入帳 571＋手續費 9", "vouchers": 2}],
-          "efiles": [{"file": "booking_receipt.pdf", "label": "訂房收據"}],
-          "physical": [{"kind": "a4", "label": "飯店發票", "photo": "hotel_invoice.jpg"}]
+          "screenshots": [
+            {
+              "file": "card_hotel.jpg",
+              "label": "入帳 571＋手續費 9",
+              "vouchers": 2
+            }
+          ],
+          "efiles": [
+            {
+              "file": "booking_receipt.pdf",
+              "label": "訂房收據"
+            }
+          ],
+          "physical": [
+            {
+              "kind": "a4",
+              "label": "飯店發票",
+              "photo": "hotel_invoice.jpg"
+            }
+          ]
         }
       ]
     },
@@ -37,26 +64,52 @@
         {
           "code": "餐1",
           "title": "拉麵店",
-          "screenshots": [{"file": "card_ramen.jpg", "label": "238＋手續費 4", "vouchers": 2}],
-          "physical": [{"kind": "small", "label": "拉麵店 實體收據（JPY 1,000）", "photo": "ramen.jpg", "crop": [150, 60, 1340, 1960], "width_mm": 80}]
+          "screenshots": [
+            {
+              "file": "card_ramen.jpg",
+              "label": "238＋手續費 4",
+              "vouchers": 2
+            }
+          ],
+          "physical": [
+            {
+              "kind": "small",
+              "label": "拉麵店 實體收據（JPY 1,000）",
+              "photo": "ramen.jpg",
+              "crop": [
+                150,
+                60,
+                1340,
+                1960
+              ],
+              "width_mm": 80
+            }
+          ]
         },
         {
           "code": "餐2",
           "title": "外送",
           "screenshots": [
-            {"file": "card_delivery.jpg", "label": "入帳 495"},
-            {"file": "card_delivery_fee.jpg", "label": "手續費 8"}
+            {
+              "file": "card_delivery.jpg",
+              "label": "入帳 495"
+            },
+            {
+              "file": "card_delivery_fee.jpg",
+              "label": "手續費 8"
+            }
           ],
-          "efiles": [{"file": "delivery_receipt.pdf", "pages": [1], "label": "外送收據"}]
+          "efiles": [
+            {
+              "file": "delivery_receipt.pdf",
+              "pages": [
+                1
+              ],
+              "label": "外送收據"
+            }
+          ]
         }
       ]
-    },
-    {
-      "category": "預支歸還",
-      "currency": "日元",
-      "amount": 0,
-      "remark": "",
-      "entries": []
     }
   ],
   "_說明": {
