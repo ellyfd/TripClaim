@@ -351,6 +351,11 @@ def write_pdf(pages, path):
     return len(pages)
 
 
+def upload_name(i, item):
+    """上傳檔名：序號_項目_幣別.pdf。同項目不同幣別各一列時，靠幣別分辨。"""
+    return f"{i}_{item['category']}_{item['currency']}.pdf"
+
+
 def write_xlsx(m, path, out):
     wb = Workbook()
     ws = wb.active
@@ -358,7 +363,7 @@ def write_xlsx(m, path, out):
     ws.append(["項目", "幣別", "金額", "憑證數", "附件", "Remark", "費用歸屬"])
     totals = {}
     for i, it in enumerate(m["items"], 1):
-        att = f"{i}_{it['category']}.pdf"
+        att = upload_name(i, it)
         ws.append([it["category"], it["currency"], it["amount"], voucher_count(it),
                    att if os.path.exists(os.path.join(out, "上傳", att)) else "",
                    it.get("remark", ""), it.get("cost_center", "")])
@@ -420,8 +425,8 @@ def main():
         for e in it["entries"]:   # 上傳檔沒有留位框，黏貼處改成「照片見後」
             e["_note"] = e["_note"].replace("左上黏貼處", "照片見後").replace("左下黏貼處", "照片見後")
         up = [to_pdf_page(p) for p in shot_pages(it, False)] + efs + photo_pages(base, it)
-        n = write_pdf(up, os.path.join(out, "上傳", f"{i}_{it['category']}.pdf")) if up else 0
-        print(f"{i}_{it['category']}: 憑證數 {voucher_count(it)}，上傳 {n} 頁，要印 {len(printed) + len(efs)} 頁")
+        n = write_pdf(up, os.path.join(out, "上傳", upload_name(i, it))) if up else 0
+        print(f"{upload_name(i, it)}: 憑證數 {voucher_count(it)}，上傳 {n} 頁，要印 {len(printed) + len(efs)} 頁")
     print("要印.pdf:", write_pdf(print_pages, os.path.join(out, "要印.pdf")), "頁")
     write_xlsx(m, os.path.join(out, name + ".xlsx"), out)
     zpath = out.rstrip("/") + ".zip"
