@@ -198,8 +198,8 @@ def shot_pages(item, with_slots):
     if not entries:
         # 都報原幣、沒有信用卡明細：不留右邊的截圖區，留位框兩欄兩列排滿
         title = item["category"] + "｜實體收據黏貼處"
-        gap_x = round(10 * MM)
-        x_start = (W - (2 * sw + gap_x)) // 2
+        gap_x = round(5 * MM)      # 和上傳檔的實體收據照片頁同樣靠左、同樣間距
+        x_start = MARGIN
         for pi in range(0, len(slots), 4):
             pg, d, top = new_page(title)
             sh_h = (H - MARGIN - top - GAP) // 2 - LABEL_H
